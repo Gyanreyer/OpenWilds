@@ -5,3 +5,7 @@ bloom_time:
   start: June
   end: July
 height: 5 feet
+# 1 = full shade, 5 = full sun
+light: 2-3
+# 1 = dry, 5 = wet
+moisture: 2-4

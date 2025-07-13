@@ -5,3 +5,7 @@ bloom_time:
   start: June
   end: August
 height: 6-12 feet
+# 1 = full shade, 5 = full sun
+light: 3-5
+# 1 = dry, 5 = wet
+moisture: 4-5

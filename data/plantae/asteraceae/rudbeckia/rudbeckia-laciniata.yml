@@ -9,3 +9,7 @@ bloom_time:
   start: July
   end: October
 height: 7 feet
+# 1 = full shade, 5 = full sun
+light: 1-5
+# 1 = dry, 5 = wet
+moisture: 3-4
