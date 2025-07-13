@@ -1,0 +1,11 @@
+scientific_name: Verbena hastata
+common_names:
+  - Blue Vervain
+bloom_time:
+  start: July
+  end: September
+height: 5 feet
+# 1 = full shade, 5 = full sun
+light: 3-5
+# 1 = dry, 5 = wet
+moisture: 3-5

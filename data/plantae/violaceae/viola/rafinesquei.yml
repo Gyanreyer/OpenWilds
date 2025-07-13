@@ -1,0 +1,11 @@
+scientific_name: Viola rafinesquei
+common_names:
+  - American Field Pansy
+bloom_time:
+  start: April
+  end: June
+height: 6-12 inches
+# 1 = full shade, 5 = full sun
+light: 3-5
+# 1 = dry, 5 = wet
+moisture: 2-4
