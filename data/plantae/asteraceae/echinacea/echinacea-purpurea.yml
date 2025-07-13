@@ -1,3 +1,7 @@
 scientific_name: Echinacea purpurea
 common_names:
   - Purple Coneflower
+bloom_time:
+  start: July
+  end: September
+height: 4 feet

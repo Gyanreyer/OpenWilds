@@ -5,3 +5,7 @@ common_names:
   - Tall Coneflower
   - Wild Golden Glow
   - Sochan
+bloom_time:
+  start: July
+  end: October
+height: 7 feet
