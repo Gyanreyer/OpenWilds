@@ -7,9 +7,12 @@ Your task is to generate a `data.yml` entry for a single plant or insect species
 
 - Use **scientific sources first** (`.edu`, `.gov`, peer-reviewed publications, global biodiversity APIs like ITIS, GBIF, USDA PLANTS, etc.).
 - If critical data is missing, you may fall back to **reputable citizen science or nonprofit sources** (e.g. iNaturalist, Xerces, Lady Bird Johnson Wildflower Center).
-- Do not use Wikipedia as a source unless nothing else is available.
-- **Always use a taxonomy API** (preferably [ITIS](https://www.itis.gov/)) to determine the correct full taxonomy hierarchy:
-    - `kingdom`, `family`, `sub-family` (if applicable), `genus`, and `species`.
+- Use a taxonomy API (preferably ITIS) to retrieve the full classification for the species. This must include:
+  - kingdom
+  - family
+  - sub-family (if it exists — **do not skip this** if it is present in the taxonomy)
+  - genus
+  - species
 - If any field must be inferred due to incomplete data, **make an educated guess** and add a comment (starting with `#`) directly above that field noting the uncertainty and reasoning.
 
 ---
@@ -53,12 +56,13 @@ moisture: [single number or range like 2-4]
 - `host_plants` values should use path-based references, e.g., `plantae/apocynaceae/asclepias`.
 - **Do not include any fields not part of the schema** unless noted in a comment as a suggested extension.
 
-**2. File Path:**  
+**2. File Path:**
 On a new line after the YAML block, return the absolute file path where this entry should be saved, using this format:
 
-`File path: data/[kingdom]/[family]/[sub-family, if any]/[genus]/[species]/data.yml`
+`File path: data/[kingdom]/[family]/[sub-family, if present]/[genus]/[species]/data.yml`
 
-Replace each component with lowercase Latin characters from the taxonomic classification, omitting the sub-family level if not applicable.
+Replace each component with lowercase Latin characters from the taxonomic classification.
+Always include the sub-family if it exists in the taxonomy. Only omit this level if you have confirmed that no sub-family is assigned.
 
 ---
 #### 🧪 Input
