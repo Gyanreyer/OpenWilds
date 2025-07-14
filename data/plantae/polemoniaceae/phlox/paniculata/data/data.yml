@@ -6,7 +6,7 @@ common_names:
 bloom_time:
   start: July
   end: September
-height: 2-4 ft
+height: 2-4 feet
 # 1 = full shade, 5 = full sun.
 light: 4-5
 # 1 = dry soil, 5 = wet soil.
