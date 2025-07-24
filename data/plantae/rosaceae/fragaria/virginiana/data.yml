@@ -5,12 +5,14 @@ common_names:
 bloom_time:
   start: April
   end: June
+bloom_color:
+  - White
+  - Yellow
 height: 4-8 inches
 # 1 = full shade, 5 = full sun
 light: 2-5
 # 1 = dry, 5 = wet
 moisture: 1-4
-
 distribution:
   CA:
     - AB
@@ -20,7 +22,7 @@ distribution:
     - NS
     - NT
     - NU
-    - 'ON'
+    - "ON"
     - PE
     - QC
     - SK

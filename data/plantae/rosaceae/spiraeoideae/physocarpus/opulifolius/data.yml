@@ -6,12 +6,13 @@ common_names:
 bloom_time:
   start: May
   end: June
+bloom_color:
+  - White
 height: 5-9 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5
 # 1 = dry soil, 5 = wet soil. Use a range if applicable.
 moisture: 2-4
-
 distribution:
   US:
     - AL
@@ -53,5 +54,5 @@ distribution:
     - MB
     - NB
     - NS
-    - 'ON'
+    - "ON"
     - QC

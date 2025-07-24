@@ -5,12 +5,13 @@ common_names:
 bloom_time:
   start: July
   end: August
+bloom_color:
+  - Pink
 height: 4 feet
 # 1 = full shade, 5 = full sun
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 3-5
-
 distribution:
   US:
     - AL
@@ -60,6 +61,6 @@ distribution:
     - MB
     - NB
     - NS
-    - 'ON'
+    - "ON"
     - PE
     - QC

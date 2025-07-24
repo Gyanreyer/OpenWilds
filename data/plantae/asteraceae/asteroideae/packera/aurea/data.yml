@@ -5,10 +5,11 @@ common_names:
 bloom_time:
   start: April
   end: June
+bloom_color:
+  - Yellow
 height: 1 to 2 feet
 light: 1-4
 moisture: 3-5
-
 distribution:
   US:
     - AL
@@ -47,6 +48,6 @@ distribution:
     - MB
     - NB
     - NS
-    - 'ON'
+    - "ON"
     - PE
     - QC

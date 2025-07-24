@@ -4,12 +4,13 @@ common_names:
 bloom_time:
   start: June
   end: August
+bloom_color:
+  - Orange
 height: 2 feet
 # 1 = full shade, 5 = full sun
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 1-3
-
 distribution:
   US:
     - AL
@@ -54,5 +55,5 @@ distribution:
     - WI
     - WV
   CA:
-    - 'ON'
+    - "ON"
     - QC

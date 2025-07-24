@@ -4,18 +4,21 @@ common_names:
 bloom_time:
   start: April
   end: June
+bloom_color:
+  - White
+  - Purple
+  - Yellow
 height: 6-12 inches
 # 1 = full shade, 5 = full sun
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 2-4
-
 distribution:
   CA:
     - AB
     - BC
     - NT
-    - 'ON'
+    - "ON"
     - SK
   US:
     - AL

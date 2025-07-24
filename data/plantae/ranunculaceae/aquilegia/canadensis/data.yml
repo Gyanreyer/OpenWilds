@@ -8,12 +8,12 @@ bloom_time:
   end: June
 bloom_color:
   - Red
+  - Yellow
 height: 1-2 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 2-4
 # 1 = dry soil, 5 = wet soil. Use a range if applicable.
 moisture: 2-4
-
 distribution:
   US:
     - AL
@@ -55,6 +55,6 @@ distribution:
   CA:
     - MB
     - NB
-    - 'ON'
+    - "ON"
     - QC
     - SK

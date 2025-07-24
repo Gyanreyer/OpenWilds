@@ -5,6 +5,8 @@ common_names:
 bloom_time:
   start: July
   end: September
+bloom_color:
+  - Pink
 height: 5-7 feet
 light: 3-5
 moisture: 3-5
@@ -45,4 +47,4 @@ distribution:
     - WI
     - WV
   CA:
-    - 'ON'
+    - "ON"

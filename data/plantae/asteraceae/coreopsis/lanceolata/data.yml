@@ -5,6 +5,8 @@ common_names:
 bloom_time:
   start: May
   end: July
+bloom_color:
+  - Yellow
 height: 1 to 2 feet
 light: 4-5
 moisture: 1-3
@@ -55,4 +57,4 @@ distribution:
     - WY
   CA:
     - BC
-    - 'ON'
+    - "ON"

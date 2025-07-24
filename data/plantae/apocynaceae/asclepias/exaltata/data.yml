@@ -4,12 +4,13 @@ common_names:
 bloom_time:
   start: June
   end: July
+bloom_color:
+  - White
 height: 5 feet
 # 1 = full shade, 5 = full sun
 light: 2-3
 # 1 = dry, 5 = wet
 moisture: 2-4
-
 distribution:
   US:
     - AL
@@ -40,5 +41,5 @@ distribution:
     - WI
     - WV
   CA:
-    - 'ON'
+    - "ON"
     - QC

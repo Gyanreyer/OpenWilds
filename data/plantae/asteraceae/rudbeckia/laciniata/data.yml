@@ -8,12 +8,13 @@ common_names:
 bloom_time:
   start: July
   end: October
+bloom_color:
+  - Yellow
 height: 7 feet
 # 1 = full shade, 5 = full sun
 light: 1-5
 # 1 = dry, 5 = wet
 moisture: 3-4
-
 distribution:
   US:
     - AL
@@ -66,6 +67,6 @@ distribution:
     - MB
     - NB
     - NS
-    - 'ON'
+    - "ON"
     - PE
     - QC

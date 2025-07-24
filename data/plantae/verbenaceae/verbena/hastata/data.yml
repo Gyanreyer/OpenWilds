@@ -4,12 +4,13 @@ common_names:
 bloom_time:
   start: July
   end: September
+bloom_color:
+  - Purple
 height: 5 feet
 # 1 = full shade, 5 = full sun
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 3-5
-
 distribution:
   US:
     - AL
@@ -65,6 +66,6 @@ distribution:
     - MB
     - NB
     - NS
-    - 'ON'
+    - "ON"
     - QC
     - SK

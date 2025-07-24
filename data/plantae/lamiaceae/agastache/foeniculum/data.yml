@@ -5,6 +5,8 @@ common_names:
 bloom_time:
   start: June
   end: September
+bloom_color:
+  - Purple
 height: 2 to 4 feet
 light: 4-5
 moisture: 2-4

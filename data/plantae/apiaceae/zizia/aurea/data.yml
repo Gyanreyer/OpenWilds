@@ -4,12 +4,13 @@ common_names:
 bloom_time:
   start: April
   end: June
+bloom_color:
+  - Yellow
 height: 3 feet
 # 1 = full shade, 5 = full sun
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 2-4
-
 distribution:
   US:
     - AL
@@ -54,5 +55,5 @@ distribution:
     - MB
     - NB
     - NS
-    - 'ON'
+    - "ON"
     - QC

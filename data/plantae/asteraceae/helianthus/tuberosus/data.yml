@@ -5,6 +5,8 @@ common_names:
 bloom_time:
   start: August
   end: October
+bloom_color:
+  - Yellow
 height: 5-10 feet
 # 1 = full shade, 5 = full sun
 light: 3-5

@@ -5,15 +5,16 @@ common_names:
 bloom_time:
   start: June
   end: August
+bloom_color:
+  - Pink
 height: 12 to 18 inches
 light: 4-5
 moisture: 2-4
-
 distribution:
   CA:
     - AB
     - BC
-    - 'ON'
+    - "ON"
     - SK
   US:
     - AL

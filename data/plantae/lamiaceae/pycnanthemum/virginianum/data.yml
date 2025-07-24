@@ -6,12 +6,13 @@ common_names:
 bloom_time:
   start: July
   end: September
+bloom_color:
+  - White
 height: 2 to 3 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5
 # 1 = dry soil, 5 = wet soil. Use a range if applicable.
 moisture: 2-5
-
 distribution:
   US:
     - AL
@@ -49,5 +50,5 @@ distribution:
     - WV
   CA:
     - NB
-    - 'ON'
+    - "ON"
     - QC

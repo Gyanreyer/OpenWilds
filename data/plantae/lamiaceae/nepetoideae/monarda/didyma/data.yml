@@ -6,14 +6,15 @@ common_names:
 bloom_time:
   start: July
   end: August
+bloom_color:
+  - Red
 height: 2-4 feet
 light: 3-5
 moisture: 2-4
-
 distribution:
   CA:
     - NB
-    - 'ON'
+    - "ON"
     - QC
   US:
     - CT

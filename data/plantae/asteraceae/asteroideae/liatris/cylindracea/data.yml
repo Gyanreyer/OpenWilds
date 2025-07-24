@@ -13,7 +13,6 @@ height: 1 to 2 feet
 light: 4-5
 # 1 = dry soil, 5 = wet soil. Use a range if applicable.
 moisture: 1-3
-
 distribution:
   US:
     - AL
@@ -32,4 +31,4 @@ distribution:
     - TN
     - WI
   CA:
-    - 'ON'
+    - "ON"
