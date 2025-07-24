@@ -1,0 +1,35 @@
+scientific_name: Liatris cylindracea
+common_names:
+  - Dwarf Blazing Star
+  - Barrelhead Blazing Star
+  - Ontario Blazing Star
+bloom_time:
+  start: July
+  end: October
+bloom_color:
+  - Purple
+height: 1 to 2 feet
+# 1 = full shade, 5 = full sun. Use a range if applicable.
+light: 4-5
+# 1 = dry soil, 5 = wet soil. Use a range if applicable.
+moisture: 1-3
+
+distribution:
+  US:
+    - AL
+    - AR
+    - DE
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - MI
+    - MN
+    - MO
+    - NY
+    - OH
+    - TN
+    - WI
+  CA:
+    - 'ON'

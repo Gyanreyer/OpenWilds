@@ -1,0 +1,61 @@
+scientific_name: Physostegia virginiana
+common_names:
+  - Obedient Plant
+  - False Dragonhead
+bloom_time:
+  start: August
+  end: September
+height: 3-4 feet
+# 1 = full shade, 5 = full sun. Use a range if applicable.
+light: 3-5
+# 1 = dry soil, 5 = wet soil. Use a range if applicable.
+moisture: 3-5
+
+distribution:
+  US:
+    - AL
+    - AR
+    - CT
+    - DE
+    - FL
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MS
+    - MT
+    - NC
+    - ND
+    - NE
+    - NH
+    - NJ
+    - NM
+    - NY
+    - OH
+    - OK
+    - PA
+    - RI
+    - SC
+    - SD
+    - TN
+    - TX
+    - UT
+    - VA
+    - VT
+    - WI
+    - WV
+  CA:
+    - MB
+    - NB
+    - NS
+    - 'ON'
+    - QC

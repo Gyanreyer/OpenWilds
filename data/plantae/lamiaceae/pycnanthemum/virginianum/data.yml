@@ -1,0 +1,53 @@
+scientific_name: Pycnanthemum virginianum
+common_names:
+  - Virginia Mountain Mint
+  - Common Mountain Mint
+  - American Mountain Mint
+bloom_time:
+  start: July
+  end: September
+height: 2 to 3 feet
+# 1 = full shade, 5 = full sun. Use a range if applicable.
+light: 3-5
+# 1 = dry soil, 5 = wet soil. Use a range if applicable.
+moisture: 2-5
+
+distribution:
+  US:
+    - AL
+    - AR
+    - CT
+    - DE
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MS
+    - NC
+    - ND
+    - NE
+    - NH
+    - NJ
+    - NY
+    - OH
+    - OK
+    - PA
+    - RI
+    - SD
+    - TN
+    - VA
+    - VT
+    - WI
+    - WV
+  CA:
+    - NB
+    - 'ON'
+    - QC

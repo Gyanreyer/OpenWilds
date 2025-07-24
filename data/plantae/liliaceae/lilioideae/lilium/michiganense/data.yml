@@ -1,0 +1,37 @@
+scientific_name: Lilium michiganense
+common_names:
+  - Michigan Lily
+  - Turk's Cap Lily
+bloom_time:
+  start: June
+  end: August
+height: 2 to 5 feet
+# 1 = full shade, 5 = full sun. Use a range if applicable.
+light: 3-5
+# 1 = dry soil, 5 = wet soil. Use a range if applicable.
+moisture: 3-5
+
+distribution:
+  US:
+    - AL
+    - AR
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - MI
+    - MN
+    - MO
+    - MS
+    - NE
+    - NY
+    - OH
+    - OK
+    - PA
+    - SD
+    - TN
+    - WI
+  CA:
+    - 'ON'

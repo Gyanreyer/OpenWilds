@@ -40,6 +40,9 @@ common_names:
 bloom_time:
     start: [Month]
     end: [Month]
+bloom_color:
+    - [Color 1]
+    - [Color 2] # Optional, if multiple colors
 height: [Measurement in feet or inches]
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: [single number or range like 2-4]
@@ -76,6 +79,8 @@ common_names:
 bloom_time:
   start: July
   end: September
+bloom_color:
+  - Purple
 height: 4 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5

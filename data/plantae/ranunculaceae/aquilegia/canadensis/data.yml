@@ -1,0 +1,60 @@
+scientific_name: Aquilegia canadensis
+common_names:
+  - Wild Columbine
+  - Eastern Red Columbine
+  - Canada Columbine
+bloom_time:
+  start: May
+  end: June
+bloom_color:
+  - Red
+height: 1-2 feet
+# 1 = full shade, 5 = full sun. Use a range if applicable.
+light: 2-4
+# 1 = dry soil, 5 = wet soil. Use a range if applicable.
+moisture: 2-4
+
+distribution:
+  US:
+    - AL
+    - AR
+    - CT
+    - DE
+    - FL
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MS
+    - NC
+    - ND
+    - NE
+    - NH
+    - NJ
+    - NY
+    - OH
+    - OK
+    - PA
+    - RI
+    - SC
+    - SD
+    - TN
+    - TX
+    - VA
+    - VT
+    - WI
+    - WV
+  CA:
+    - MB
+    - NB
+    - 'ON'
+    - QC
+    - SK

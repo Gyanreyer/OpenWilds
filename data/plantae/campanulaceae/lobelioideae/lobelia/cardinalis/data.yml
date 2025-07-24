@@ -1,0 +1,60 @@
+scientific_name: Lobelia cardinalis
+common_names:
+  - Cardinal Flower
+  - Indian Pink
+bloom_time:
+  start: August
+  end: October
+height: 3-5 feet
+# 1 = full shade, 5 = full sun. Use a range if applicable.
+light: 3-5
+# 1 = dry soil, 5 = wet soil. Use a range if applicable.
+moisture: 4-5
+
+distribution:
+  US:
+    - AL
+    - AR
+    - AZ
+    - CA
+    - CO
+    - CT
+    - DE
+    - FL
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MS
+    - NC
+    - NE
+    - NH
+    - NJ
+    - NM
+    - NV
+    - NY
+    - OH
+    - OK
+    - PA
+    - RI
+    - SC
+    - TN
+    - TX
+    - UT
+    - VA
+    - VT
+    - WI
+    - WV
+  CA:
+    - NB
+    - 'ON'
+    - QC

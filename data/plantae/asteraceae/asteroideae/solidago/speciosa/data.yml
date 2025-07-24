@@ -1,0 +1,57 @@
+scientific_name: Solidago speciosa
+common_names:
+  - Showy Goldenrod
+  - Noble Goldenrod
+bloom_time:
+  start: September
+  end: November
+bloom_color:
+  - Yellow
+height: 3-5 feet
+# 1 = full shade, 5 = full sun.
+light: 3-5
+# 1 = dry soil, 5 = wet soil.
+moisture: 1-3
+
+distribution:
+  US:
+    - AL
+    - AR
+    - CO
+    - CT
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - MI
+    - MN
+    - MO
+    - MS
+    - NC
+    - ND
+    - NE
+    - NH
+    - NJ
+    - NM
+    - NY
+    - OH
+    - OK
+    - PA
+    - RI
+    - SC
+    - SD
+    - TN
+    - TX
+    - VA
+    - VT
+    - WI
+    - WV
+    - WY
+  CA:
+    - MB
+    - 'ON'

@@ -1,0 +1,55 @@
+scientific_name: Lobelia siphilitica
+common_names:
+  - Blue Lobelia
+  - Great Blue Lobelia
+bloom_time:
+  start: August
+  end: October
+height: 2-4 feet
+# 1 = full shade, 5 = full sun. Use a range if applicable.
+light: 3-5
+# 1 = dry soil, 5 = wet soil. Use a range if applicable.
+moisture: 4-5
+
+distribution:
+  US:
+    - AL
+    - AR
+    - CO
+    - CT
+    - DE
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MS
+    - NC
+    - ND
+    - NE
+    - NH
+    - NJ
+    - NY
+    - OH
+    - OK
+    - PA
+    - SC
+    - SD
+    - TN
+    - TX
+    - VA
+    - VT
+    - WI
+    - WV
+    - WY
+  CA:
+    - MB
+    - 'ON'
