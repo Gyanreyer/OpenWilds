@@ -9,3 +9,45 @@ height: 6-12 inches
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 2-4
+
+distribution:
+  CA:
+    - AB
+    - BC
+    - NT
+    - 'ON'
+    - SK
+  US:
+    - AL
+    - AR
+    - AZ
+    - CO
+    - DE
+    - FL
+    - GA
+    - IA
+    - ID
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - MI
+    - MO
+    - MS
+    - NC
+    - NE
+    - NJ
+    - NM
+    - NY
+    - OH
+    - OK
+    - PA
+    - SC
+    - SD
+    - TN
+    - TX
+    - VA
+    - WV

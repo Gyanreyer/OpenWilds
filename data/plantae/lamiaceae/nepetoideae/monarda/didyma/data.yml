@@ -9,3 +9,37 @@ bloom_time:
 height: 2-4 feet
 light: 3-5
 moisture: 2-4
+
+distribution:
+  CA:
+    - NB
+    - 'ON'
+    - QC
+  US:
+    - CT
+    - DE
+    - GA
+    - IA
+    - IL
+    - IN
+    - KY
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - NC
+    - NH
+    - NJ
+    - NY
+    - OH
+    - OR
+    - PA
+    - SC
+    - TN
+    - VA
+    - VT
+    - WA
+    - WI
+    - WV

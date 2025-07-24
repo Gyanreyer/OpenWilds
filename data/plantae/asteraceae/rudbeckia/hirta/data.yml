@@ -9,3 +9,63 @@ height: 2 feet
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 2-4
+
+distribution:
+  CA:
+    - AB
+    - BC
+    - MB
+    - NB
+    - NS
+    - 'ON'
+    - PE
+    - QC
+    - SK
+  US:
+    - AK
+    - AL
+    - AR
+    - CA
+    - CO
+    - CT
+    - DE
+    - FL
+    - GA
+    - IA
+    - ID
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MS
+    - MT
+    - NC
+    - ND
+    - NE
+    - NH
+    - NJ
+    - NM
+    - NY
+    - OH
+    - OK
+    - OR
+    - PA
+    - RI
+    - SC
+    - SD
+    - TN
+    - TX
+    - UT
+    - VA
+    - VT
+    - WA
+    - WI
+    - WV
+    - WY

@@ -8,3 +8,24 @@ bloom_time:
 height: 2 to 5 feet
 light: 4-5
 moisture: 1-3
+
+distribution:
+  US:
+    - AL
+    - CT
+    - DE
+    - FL
+    - GA
+    - IL
+    - IN
+    - LA
+    - MA
+    - MD
+    - MS
+    - NC
+    - NJ
+    - NY
+    - OH
+    - PA
+    - TX
+    - VA

@@ -11,3 +11,46 @@ height: 2-4 feet
 light: 4-5
 # 1 = dry soil, 5 = wet soil.
 moisture: 3-5
+
+distribution:
+  US:
+    - AL
+    - AR
+    - CT
+    - DE
+    - GA
+    - IA
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MS
+    - NC
+    - NE
+    - NH
+    - NJ
+    - NY
+    - OH
+    - OK
+    - PA
+    - RI
+    - SC
+    - TN
+    - UT
+    - VA
+    - VT
+    - WA
+    - WI
+    - WV
+  CA:
+    - NB
+    - NS
+    - 'ON'
+    - QC

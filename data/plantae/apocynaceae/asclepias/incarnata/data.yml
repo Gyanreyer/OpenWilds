@@ -10,3 +10,56 @@ height: 4 feet
 light: 3-5
 # 1 = dry, 5 = wet
 moisture: 3-5
+
+distribution:
+  US:
+    - AL
+    - AR
+    - CO
+    - CT
+    - DE
+    - FL
+    - GA
+    - IA
+    - ID
+    - IL
+    - IN
+    - KS
+    - KY
+    - LA
+    - MA
+    - MD
+    - ME
+    - MI
+    - MN
+    - MO
+    - MT
+    - NC
+    - ND
+    - NE
+    - NH
+    - NJ
+    - NM
+    - NV
+    - NY
+    - OH
+    - OK
+    - PA
+    - RI
+    - SC
+    - SD
+    - TN
+    - TX
+    - UT
+    - VA
+    - VT
+    - WI
+    - WV
+    - WY
+  CA:
+    - MB
+    - NB
+    - NS
+    - 'ON'
+    - PE
+    - QC

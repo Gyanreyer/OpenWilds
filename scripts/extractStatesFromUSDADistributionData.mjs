@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import { parse } from "csv-parse/sync";
 import yaml from "js-yaml";
 import clipboardy from "clipboardy";
@@ -121,9 +120,7 @@ function getAbbreviation(country, state) {
   return undefined;
 }
 
-function extractDistribution(csvPath) {
-  let csvContent = fs.readFileSync(csvPath, "utf8");
-
+function extractDistribution(csvContent) {
   // Skip any non-CSV title lines (e.g., "Distribution Data")
   const lines = csvContent.split(/\r?\n/);
   let headerIdx = lines.findIndex(
@@ -154,27 +151,100 @@ function extractDistribution(csvPath) {
   return yaml.dump({ distribution });
 }
 
+/**
+ * @param {string} scientificName
+ */
+export async function getDistributionYamlForScientificName(scientificName) {
+  try {
+    const plantSearchResponse = await fetch(
+      "https://plantsservices.sc.egov.usda.gov/api/plants-search-results",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          Field: "Scientific Name",
+          Text: scientificName.trim(),
+          SortBy: "sortSciName",
+          Type: "Basic",
+          allData: 0,
+          pageNumber: 1,
+        }),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+    ).then((r) => r.json());
+
+    if (plantSearchResponse.PlantResults.length > 1) {
+      console.warn(
+        `Found more than one plant matching ${scientificName}. Results may be incorrect.`,
+      );
+    }
+
+    const plantResult = plantSearchResponse.PlantResults.find((result) => {
+      const scientificNames = [
+        result.ScientificNameWithoutAuthor.toLowerCase().trim(),
+        ...(result.Synonyms?.map(({ ScientificNameWithoutAuthor }) =>
+          ScientificNameWithoutAuthor.toLowerCase().trim(),
+        ) ?? []),
+      ];
+
+      return scientificNames.includes(scientificName.toLowerCase().trim());
+    });
+
+    // const plantResult = plantSearchResponse.PlantResults[0];
+    if (!plantResult) {
+      console.error(`No plant found with scientific name "${scientificName}".`);
+      process.exit(1);
+    }
+
+    const plantID = plantResult.Id;
+
+    if (!plantID) {
+      console.error(`No plant ID found for "${scientificName}".`);
+      console.log("Dumping search response...");
+      console.dir(plantSearchResponse);
+      process.exit(1);
+    }
+
+    const response = await fetch(
+      "https://plantsservices.sc.egov.usda.gov/api/PlantProfile/getDownloadDistributionDocumentation",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          MasterId: plantID,
+        }),
+        headers: {
+          Accept: "text/csv",
+          "Content-Type": "application/json",
+        },
+      },
+    ).then((r) => r.text());
+
+    const yamlString = extractDistribution(response);
+    return yamlString;
+  } catch (err) {
+    console.error(
+      `Error getting distribution data for ${scientificName}:`,
+      err.message,
+    );
+  }
+}
+
 // CLI entry point for ESM
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [, , inputPath] = process.argv;
+  const [, , scientificName] = process.argv;
 
-  if (!inputPath) {
+  if (!scientificName) {
     console.error(
       "Usage: node OpenWilds/scripts/extractStatesFromUSDADistributionData.mjs <path/to/DistributionData.csv>",
     );
     process.exit(1);
   }
 
-  try {
-    const yamlString = extractDistribution(
-      path.resolve(process.cwd(), inputPath),
-    );
-    clipboardy.writeSync(yamlString);
-    console.log("YAML output has been copied to your clipboard!");
-    console.log("\n--- YAML Preview ---\n");
-    console.log(yamlString);
-  } catch (err) {
-    console.error("Error processing file:", err.message);
-    process.exit(1);
-  }
+  const yamlString = await getDistributionYamlForScientificName(scientificName);
+  clipboardy.writeSync(yamlString);
+  console.log("YAML output has been copied to your clipboard!");
+  console.log("\n--- YAML Preview ---\n");
+  console.log(yamlString);
 }

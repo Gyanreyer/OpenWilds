@@ -8,3 +8,45 @@ bloom_time:
 height: 12 to 18 inches
 light: 4-5
 moisture: 2-4
+
+distribution:
+  CA:
+    - AB
+    - BC
+    - 'ON'
+    - SK
+  US:
+    - AL
+    - AR
+    - AZ
+    - CO
+    - GA
+    - IA
+    - ID
+    - IL
+    - IN
+    - KY
+    - MD
+    - MI
+    - MN
+    - MO
+    - MS
+    - MT
+    - NC
+    - NE
+    - NJ
+    - NM
+    - NY
+    - OH
+    - OR
+    - PA
+    - SC
+    - SD
+    - TN
+    - TX
+    - UT
+    - VA
+    - WA
+    - WI
+    - WV
+    - WY
