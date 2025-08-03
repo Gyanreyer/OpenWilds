@@ -37,7 +37,7 @@ scientific_name: [Genus species]
 common_names:
     - [Name 1]
     - [Name 2]
-life_cycle: [Annual | Perennial]
+life_cycle: [Annual | Biennial | Perennial]
 bloom_time:
     start: [Month]
     end: [Month]
