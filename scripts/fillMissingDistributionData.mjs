@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import yaml from "js-yaml";
+import yaml from "yaml";
 import { getDistributionYamlForScientificName } from "./extractStatesFromUSDADistributionData.mjs";
 
 // Helper to recursively find all data.yml files in a directory
@@ -26,7 +26,7 @@ async function processFiles() {
 
   for (const file of files) {
     const content = fs.readFileSync(file, "utf8");
-    const data = yaml.load(content);
+    const data = yaml.parse(content);
 
     // If distribution field exists, skip
     if (data.distribution) {
@@ -41,8 +41,9 @@ async function processFiles() {
     }
 
     console.log(`Fetching distribution for ${scientificName} (${file})...`);
-    const distributionYaml =
-      await getDistributionYamlForScientificName(scientificName);
+    const distributionYaml = await getDistributionYamlForScientificName(
+      scientificName
+    );
 
     if (distributionYaml) {
       // Append distribution YAML to the end of the file

@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "target": "ESNext",
+    "module": "es2022",
+    "moduleResolution": "node"
+  },
+  "include": ["**/*.js", "**/*.ts"]
+}

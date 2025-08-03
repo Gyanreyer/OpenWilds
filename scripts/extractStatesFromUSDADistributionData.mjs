@@ -1,7 +1,5 @@
-import fs from "node:fs";
-import { parse } from "csv-parse/sync";
-import yaml from "js-yaml";
-import clipboardy from "clipboardy";
+import { parse as parseCSV } from "csv-parse/sync";
+import { stringify as stringifyYaml } from "yaml";
 
 // Abbreviation maps
 const countryAbbr = {
@@ -124,13 +122,13 @@ function extractDistribution(csvContent) {
   // Skip any non-CSV title lines (e.g., "Distribution Data")
   const lines = csvContent.split(/\r?\n/);
   let headerIdx = lines.findIndex(
-    (line) => line.includes("Country") && line.includes("State"),
+    (line) => line.includes("Country") && line.includes("State")
   );
   if (headerIdx > 0) {
     csvContent = lines.slice(headerIdx).join("\n");
   }
 
-  const records = parse(csvContent, { columns: true, skip_empty_lines: true });
+  const records = parseCSV(csvContent, { columns: true, skip_empty_lines: true });
 
   const distribution = {};
 
@@ -148,7 +146,7 @@ function extractDistribution(csvContent) {
   // Sort states/provinces for consistency
   Object.keys(distribution).forEach((key) => distribution[key].sort());
 
-  return yaml.dump({ distribution });
+  return stringifyYaml({ distribution });
 }
 
 /**
@@ -172,12 +170,12 @@ export async function getDistributionYamlForScientificName(scientificName) {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-      },
+      }
     ).then((r) => r.json());
 
     if (plantSearchResponse.PlantResults.length > 1) {
       console.warn(
-        `Found more than one plant matching ${scientificName}. Results may be incorrect.`,
+        `Found more than one plant matching ${scientificName}. Results may be incorrect.`
       );
     }
 
@@ -185,7 +183,7 @@ export async function getDistributionYamlForScientificName(scientificName) {
       const scientificNames = [
         result.ScientificNameWithoutAuthor.toLowerCase().trim(),
         ...(result.Synonyms?.map(({ ScientificNameWithoutAuthor }) =>
-          ScientificNameWithoutAuthor.toLowerCase().trim(),
+          ScientificNameWithoutAuthor.toLowerCase().trim()
         ) ?? []),
       ];
 
@@ -218,7 +216,7 @@ export async function getDistributionYamlForScientificName(scientificName) {
           Accept: "text/csv",
           "Content-Type": "application/json",
         },
-      },
+      }
     ).then((r) => r.text());
 
     const yamlString = extractDistribution(response);
@@ -226,25 +224,7 @@ export async function getDistributionYamlForScientificName(scientificName) {
   } catch (err) {
     console.error(
       `Error getting distribution data for ${scientificName}:`,
-      err.message,
+      err.message
     );
   }
-}
-
-// CLI entry point for ESM
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const [, , scientificName] = process.argv;
-
-  if (!scientificName) {
-    console.error(
-      "Usage: node OpenWilds/scripts/extractStatesFromUSDADistributionData.mjs <path/to/DistributionData.csv>",
-    );
-    process.exit(1);
-  }
-
-  const yamlString = await getDistributionYamlForScientificName(scientificName);
-  clipboardy.writeSync(yamlString);
-  console.log("YAML output has been copied to your clipboard!");
-  console.log("\n--- YAML Preview ---\n");
-  console.log(yamlString);
 }
