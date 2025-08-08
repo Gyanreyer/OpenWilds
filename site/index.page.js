@@ -5,5 +5,8 @@ import Base from "./_layouts/base.js";
 export default function ({ ...data }) {
   return html`<${Base}>
     <h1>OpenWilds</h1>
+    <style data-scoped>
+      h1 { color: green; }
+    </style>
   <//>`;
 }
