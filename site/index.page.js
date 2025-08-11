@@ -1,12 +1,16 @@
 import { html } from "./_lib/html.js";
+import { getScopedComponentID } from "./_lib/scid.js";
 
 import Base from "./_layouts/base.js";
+import { SayHello } from "./_components/SayHello.component.js";
 
-export default function ({ ...data }) {
+const scid = getScopedComponentID();
+
+export default function IndexPage({ ...data }) {
   return html`<${Base}>
-    <h1>OpenWilds</h1>
-    <style data-scoped>
-      h1 { color: green; }
-    </style>
+    <main data-scid=${scid}>
+      <h1>OpenWilds</h1>
+      <${SayHello} name="Ryan" />
+    </main>
   <//>`;
 }
