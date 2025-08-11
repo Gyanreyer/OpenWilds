@@ -71,7 +71,7 @@ function h(tagNameOrComponent, attrs, ...children) {
   }
 
   if (tagNameOrComponent === "style" && (!("data-inline" in attrs) || attrs["data-inline"] === "false")) {
-    const bucketName = attrs['data-bucket'] || 'default';
+    const bucketName = attrs['data-bundle'] || 'default';
 
     return {
       html: "",

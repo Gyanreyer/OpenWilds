@@ -8,7 +8,7 @@ export function SayHello({ name }) {
     <h2>Hello, ${name}!</h2>
     <p>Welcome to OpenWilds.</p>
   </div>
-  <style data-bucket="SayHello">
+  <style data-bundle="SayHello">
     [data-scid="${scid}"] {
       h2 {
         color: red;
