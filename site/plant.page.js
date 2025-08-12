@@ -132,12 +132,9 @@ function LightRequirementMeter({
         height: 1rem;
         --grad: linear-gradient(
           to right,
-          #004400,
-          #228800,
-          #88cc00,
-          #ffff00,
-          #ff8800,
-          #ff4400
+          #440,
+          #ff0,
+          #fff
         );
         border: 1px solid black;
         --border-radius: 0.5rem;
@@ -147,9 +144,23 @@ function LightRequirementMeter({
         .meter-fill {
           position: absolute;
           inset: 0;
-          clip-path: inset(0 calc(100% - (100% * var(--high) / 5)) 0 calc(100% * (var(--low) - 1) / 5) round var(--border-radius));
+          --left: calc(100% * (var(--low) - 1) / 5);
+          --right: calc(100% - (100% * var(--high) / 5));
+          clip-path: inset(0 var(--right) 0 var(--left) round var(--border-radius));
           background-image: var(--grad);
           border-radius: var(--border-radius);
+        }
+
+        .meter-fill::after {
+          /* ::after to add an outline around the meter fill bar */
+          content: "";
+          position: absolute;
+          inset-block: 0;
+          left: var(--left);
+          right: var(--right);
+          border-radius: inherit;
+          outline: 2px solid white;
+          outline-offset: -2px;
         }
 
         &::before {
