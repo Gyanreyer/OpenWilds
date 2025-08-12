@@ -15,8 +15,6 @@ export default function ({ children }) {
       <meta property="og:type" content="website" />
       <meta property="og:title" :content="title" />
       <meta property="og:description" :content="description" />
-
-      <style @raw="getBundle('css')" webc:keep></style>
     </head>
     <body>
       ${children}

@@ -36,7 +36,7 @@ export default function (eleventyConfig) {
   /**
    * @type {Record<string, Set<string>>}
    */
-  const cssBundles = {};
+  let cssBundles = {};
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -52,6 +52,11 @@ export default function (eleventyConfig) {
       };
     },
     getData: ["config"],
+    init() {
+      // Clear CSS bundles on init so we don't accumulate cruft from past builds
+      // when in watch mode.
+      cssBundles = {}
+    },
     compile({ render }) {
       return async (data) => {
         const {
@@ -110,19 +115,28 @@ export default function (eleventyConfig) {
     }
   ) => {
 
-    await Promise.all(
+    await Promise.allSettled(
       Object.entries(cssBundles).map(async ([bundleName, cssChunkSet]) => {
         const cssContent = Array.from(cssChunkSet.values()).join("");
         if (cssContent.length === 0) {
           return;
         }
 
-        const { code } = await transformCSS({
-          filename: `${bundleName}.css`,
-          code: encoder.encode(cssContent),
-          minify: true,
-          include: Features.Nesting,
-        });
+        /**
+         * @type {Uint8Array}
+         */
+        let code;
+
+        try {
+          ({ code } = await transformCSS({
+            filename: `${bundleName}.css`,
+            code: encoder.encode(cssContent),
+            minify: true,
+            include: Features.Nesting,
+          }));
+        } catch (err) {
+          throw new Error("Error processing CSS bundle " + bundleName + ": " + err.message);
+        }
 
         const outputDir = resolve(join(output, "css"));
 

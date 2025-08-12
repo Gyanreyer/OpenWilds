@@ -1,7 +1,7 @@
 import { html } from "./_lib/html.js";
 import { getScopedComponentID } from "./_lib/scid.js";
 
-import Base from "./_layouts/base.js";
+import Base from "./_layouts/base.layout.js";
 import { SayHello } from "./_components/SayHello.component.js";
 
 const scid = getScopedComponentID();
