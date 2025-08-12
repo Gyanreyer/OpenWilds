@@ -6,7 +6,8 @@ bloom_time:
   start: July
   end: September
 bloom_color:
-  - Purple
+  name: Purple
+  hex: "#A47BE1"
 height: 5 feet
 # 1 = full shade, 5 = full sun
 light: 3-5

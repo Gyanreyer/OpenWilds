@@ -42,8 +42,8 @@ bloom_time:
     start: [Month]
     end: [Month]
 bloom_color:
-    - [Color 1]
-    - [Color 2] # Optional, if multiple colors
+  name: [Human readable color name, ie "Purple"]
+  hex: [Hex code representing the bloom color, ie "#F06CE7"]
 height: [Measurement in feet or inches]
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: [single number or range like 2-4]
@@ -83,7 +83,8 @@ bloom_time:
   start: July
   end: September
 bloom_color:
-  - Purple
+  name: Purple
+  hex: "#F06CE7"
 height: 4 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5

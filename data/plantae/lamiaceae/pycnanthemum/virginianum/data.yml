@@ -8,7 +8,8 @@ bloom_time:
   start: July
   end: September
 bloom_color:
-  - White
+  name: White
+  hex: "#EFF5E9"
 height: 2 to 3 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5

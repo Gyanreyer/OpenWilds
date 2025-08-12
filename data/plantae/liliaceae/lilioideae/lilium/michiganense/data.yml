@@ -7,7 +7,8 @@ bloom_time:
   start: June
   end: August
 bloom_color:
-  - Orange
+  name: Orange
+  hex: "#ED452B"
 height: 2 to 5 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5

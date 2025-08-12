@@ -6,9 +6,12 @@ bloom_time:
   start: April
   end: June
 bloom_color:
-  - White
-  - Purple
-  - Yellow
+  - name: Purple
+    hex: "#6E58AC"
+  - name: White
+    hex: "#D3E5F2"
+  - name: Yellow
+    hex: "#F7C509"
 height: 6-12 inches
 # 1 = full shade, 5 = full sun
 light: 3-5

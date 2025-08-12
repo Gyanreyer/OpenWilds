@@ -8,8 +8,10 @@ bloom_time:
   start: May
   end: June
 bloom_color:
-  - Red
-  - Yellow
+  - name: Red
+    hex: "#E6001C"
+  - name: Yellow
+    hex: "#F5E22F"
 height: 1-2 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 2-4

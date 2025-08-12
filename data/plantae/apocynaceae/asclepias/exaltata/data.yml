@@ -6,7 +6,8 @@ bloom_time:
   start: June
   end: July
 bloom_color:
-  - White
+  name: White
+  hex: "#DDDCF1"
 height: 5 feet
 # 1 = full shade, 5 = full sun
 light: 2-3

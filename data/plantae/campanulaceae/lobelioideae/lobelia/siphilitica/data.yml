@@ -7,7 +7,8 @@ bloom_time:
   start: August
   end: October
 bloom_color:
-  - Blue
+  name: Blue
+  hex: "#694BED"
 height: 2-4 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5

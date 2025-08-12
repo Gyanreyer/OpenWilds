@@ -8,7 +8,8 @@ bloom_time:
   start: August
   end: October
 bloom_color:
-  - Yellow
+  name: Yellow
+  hex: "#FCF00A"
 height: 1-3 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 1-4

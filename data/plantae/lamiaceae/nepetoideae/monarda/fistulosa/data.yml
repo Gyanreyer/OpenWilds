@@ -7,7 +7,8 @@ bloom_time:
   start: June
   end: September
 bloom_color:
-  - Purple
+  name: Pink
+  hex: "#E39EEA"
 height: 2 to 5 feet
 light: 4-5
 moisture: 2-4

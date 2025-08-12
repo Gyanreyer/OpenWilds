@@ -5,6 +5,17 @@ export type OneThroughFive = 1 | 2 | 3 | 4 | 5;
 export type USStateAbbreviation = "AL" | "AK" | "AZ" | "AR" | "CA" | "CO" | "CT" | "DE" | "FL" | "GA" | "HI" | "ID" | "IL" | "IN" | "IA" | "KS" | "KY" | "LA" | "ME" | "MD" | "MA" | "MI" | "MN" | "MS" | "MO" | "MT" | "NE" | "NV" | "NH" | "NJ" | "NM" | "NY" | "NC" | "ND" | "OH" | "OK" | "OR" | "PA" | "RI" | "SC" | "SD" | "TN" | "TX" | "UT" | "VT" | "VA" | "WA" | "WV" | "WI" | "WY";
 export type CAProvinceAbbreviation = "AB" | "BC" | "MB" | "NB" | "NL" | "NT" | "NS" | "NU" | "ON" | "PE" | "QC" | "SK" | "YT";
 
+export interface BloomColor {
+  /**
+   * Human-readable name of the color.
+   */
+  name: string;
+  /**
+   * Hex color code representing the bloom color for previewing.
+   */
+  hex: `#${string}`;
+}
+
 export interface PlantData {
   scientific_name: string;
   common_names: string[];
@@ -14,9 +25,12 @@ export interface PlantData {
     end: Month;
   };
   /**
-   * Array of colors describing the plant's bloom color, can be multiple colors.
+   * Object describing the plant's bloom color
+   * May not be present if the plant does not bloom or if the color is not known.
+   * May be a single color or an array of colors if the plant has multiple notable bloom colors.
+   * (ie, Wild Columbine flowers are primarily red, but also have notable yellow accents)
    */
-  bloom_color: string[];
+  bloom_color?: BloomColor | BloomColor[];
   /**
    * Generally in format of "[number or dash-separated range] [feet|inches]", ie "3 feet", "4-8 inches"
    */

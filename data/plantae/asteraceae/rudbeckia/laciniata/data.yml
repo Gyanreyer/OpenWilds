@@ -10,7 +10,8 @@ bloom_time:
   start: July
   end: October
 bloom_color:
-  - Yellow
+  name: Yellow
+  hex: "#FBE70B"
 height: 7 feet
 # 1 = full shade, 5 = full sun
 light: 1-5

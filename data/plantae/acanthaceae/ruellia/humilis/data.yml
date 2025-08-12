@@ -8,7 +8,8 @@ bloom_time:
   start: June
   end: August
 bloom_color:
-  - Purple
+  name: Purple
+  hex: "#7D5BC7"
 height: 12 to 24 inches
 light: 4-5
 moisture: 1-3

@@ -8,7 +8,8 @@ bloom_time:
   start: May
   end: October
 bloom_color:
-  - Orange
+  name: Orange
+  hex: "#F2951C"
 height: 3‑5 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 1‑3

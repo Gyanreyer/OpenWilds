@@ -7,7 +7,7 @@ import { html } from "./_lib/html.js";
 import Base from "./_layouts/base.layout.js";
 
 /**
- * @import { PlantData } from "./types/plantData.js"
+ * @import { BloomColor, PlantData } from "./types/plantData.js"
  */
 
 const baseDataFileDirectoryPath = import.meta
@@ -76,6 +76,7 @@ export default function Plant({ dataEntry }) {
       }
       </p>
     </section>` : null}
+    ${dataEntry.bloom_color ? html`<${BloomColorSection} colors=${Array.isArray(dataEntry.bloom_color) ? dataEntry.bloom_color : [dataEntry.bloom_color]} />` : null}
   <//>`;
 }
 
@@ -111,7 +112,7 @@ const parseLightRequirementRange = (rawLightRequirementValue) => {
 
 /**
  * @param {Object} props
- * @param {[low: number, high: number]} props.range 
+ * @param {[low: number, high: number]} props.range
  */
 function LightRequirementMeter({
   range: [low, high],
@@ -173,4 +174,45 @@ function LightRequirementMeter({
         }
       }
     </style>`;
+}
+
+/**
+ * @param {Object} props
+ * @param {BloomColor[]} props.colors
+ */
+function BloomColorSection({
+  colors,
+}) {
+  return html`
+    <section>
+      <h2>Bloom color${colors.length !== 1 ? "s" : ""}</h2>
+      <ul id="bloom-color-list">
+        ${colors.map((color) => html`<li>${color.name}<div class="color-preview-dot" style="--hex: ${color.hex}"></div></li>`)}
+      </ul>
+    </section>
+    <style data-bundle="plant">
+      #bloom-color-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0;
+        list-style: none;
+
+        li {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .color-preview-dot {
+          background-color: var(--hex);
+          width: 1rem;
+          height: 1rem;
+          border-radius: 50%;
+          flex-shrink: 0;
+          outline: 1px solid rgba(0, 0, 0, 0.25);
+        }
+      }
+    </style>
+  `;
 }

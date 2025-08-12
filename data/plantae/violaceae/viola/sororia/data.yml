@@ -6,7 +6,8 @@ bloom_time:
   start: April
   end: June
 bloom_color:
-  - Purple
+  name: Purple
+  hex: "#7952D8"
 height: 4-8 inches
 # 1 = full shade, 5 = full sun
 light: 2-5

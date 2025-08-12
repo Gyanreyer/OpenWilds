@@ -7,7 +7,8 @@ bloom_time:
   start: August
   end: October
 bloom_color:
-  - Red
+  name: Red
+  hex: "#E60008"
 height: 3-5 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5

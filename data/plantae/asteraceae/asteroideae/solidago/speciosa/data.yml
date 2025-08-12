@@ -7,7 +7,8 @@ bloom_time:
   start: September
   end: November
 bloom_color:
-  - Yellow
+  name: Yellow
+  hex: "#FCD20D"
 height: 3-5 feet
 # 1 = full shade, 5 = full sun.
 light: 3-5

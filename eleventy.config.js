@@ -14,12 +14,6 @@ import {
  * @import { UserConfig } from '@11ty/eleventy';
  */
 
-const DEFAULT_CSS_BUNDLE = "default";
-
-const UNSCOPABLE_TAGNAMES = new Set([
-  "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr", "title", "textarea", "script", "noscript", "svg", "math", "canvas", "video", "audio", "iframe", "object"
-]);
-
 /**
  *
  * @param {UserConfig} eleventyConfig
@@ -135,6 +129,7 @@ export default function (eleventyConfig) {
             include: Features.Nesting,
           }));
         } catch (err) {
+          console.error("Error processing CSS bundle", bundleName, ":", err);
           throw new Error("Error processing CSS bundle " + bundleName + ": " + err.message);
         }
 
