@@ -76,7 +76,7 @@ function h(tagNameOrComponent, attrs, ...children) {
     return {
       html: "",
       css: {
-        [bucketName]: children
+        [bucketName]: [children.map((child) => String(child)).join("").trim()],
       },
     };
   }
