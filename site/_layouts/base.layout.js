@@ -22,6 +22,10 @@ export default function ({ children }) {
         :root {
           font-family: system-ui, sans-serif;
         }
+
+        *, *:before, *:after {
+          box-sizing: border-box;
+        }
       </style>
     </body>
   </html>`;

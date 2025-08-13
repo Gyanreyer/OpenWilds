@@ -6,7 +6,13 @@
     "baseUrl": ".",
     "target": "ESNext",
     "module": "es2022",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "paths": {
+      "#site-lib/*": ["./site/_lib/*"],
+      "#site-components/*": ["./site/_components/*"],
+      "#site-layouts/*": ["./site/_layouts/*"],
+      "#site-utils/*": ["./site/_utils/*"]
+    }
   },
   "include": ["**/*.js", "**/*.ts"]
 }

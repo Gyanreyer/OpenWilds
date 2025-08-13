@@ -19,11 +19,8 @@ import {
  * @param {UserConfig} eleventyConfig
  */
 export default function (eleventyConfig) {
-  eleventyConfig.addPassthroughCopy({
-    _public: "/",
-    "**/*.client.js": "/client/",
-    "**/*.client.css": "/client/",
-  });
+  eleventyConfig.addPassthroughCopy("site/public");
+  eleventyConfig.addWatchTarget("site/_components/**/*.js");
 
   eleventyConfig.addTemplateFormats("page.js");
 
@@ -100,15 +97,12 @@ export default function (eleventyConfig) {
 
   });
 
-  eleventyConfig.addPassthroughCopy("site/public");
-
   eleventyConfig.on("eleventy.after", async (
     { directories: {
       output
     },
     }
   ) => {
-
     await Promise.allSettled(
       Object.entries(cssBundles).map(async ([bundleName, cssChunkSet]) => {
         const cssContent = Array.from(cssChunkSet.values()).join("");

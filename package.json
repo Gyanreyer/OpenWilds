@@ -4,11 +4,19 @@
   "description": "Open Wilds is an open source database of plants and insects native to North America. Please contribute!",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx @11ty/eleventy",
+    "serve": "npx @11ty/eleventy --serve"
   },
   "author": "Ryan Geyer",
   "license": "Unlicense",
+  "imports": {
+    "#site-lib/*": "./site/_lib/*",
+    "#site-components/*": "./site/_components/*",
+    "#site-layouts/*": "./site/_layouts/*",
+    "#site-utils/*": "./site/_utils/*"
+  },
   "devDependencies": {
+    "@11ty/eleventy-img": "^6.0.4",
     "@typescript/native-preview": "^7.0.0-dev.20250726.1",
     "csv-parse": "^6.1.0",
     "html-rewriter-wasm": "^0.4.1",

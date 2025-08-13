@@ -2,7 +2,7 @@ scientific_name: Impatiens capensis
 common_names:
   - Jewelweed
   - Spotted Jewelweed
-  - Spotted Touch‑Me‑Not
+  - Spotted Touch-Me-Not
 life_cycle: Annual
 bloom_time:
   start: May
@@ -10,11 +10,11 @@ bloom_time:
 bloom_color:
   name: Orange
   hex: "#F2951C"
-height: 3‑5 feet
+height: 3-5 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
-light: 1‑3
+light: 1-3
 # 1 = dry soil, 5 = wet soil. Use a range if applicable.
-moisture: 3‑5
+moisture: 3-5
 distribution:
   CA:
     - AB

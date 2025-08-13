@@ -1,4 +1,4 @@
-import htm from "htm/mini";
+import htm from "htm";
 
 const voidTagNames = {
   'area': true,

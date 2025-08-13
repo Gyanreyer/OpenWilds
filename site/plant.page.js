@@ -1,10 +1,15 @@
 import { glob } from "tinyglobby";
 import { parse as parseYaml } from "yaml";
 import { readFile } from "node:fs/promises";
+import Image from '@11ty/eleventy-img';
 
-import { html } from "./_lib/html.js";
+import { html } from "#site-lib/html.js";
 
-import Base from "./_layouts/base.layout.js";
+import Base from "#site-layouts/base.layout.js";
+import { BloomColorSection } from "#site-components/plant/BloomColorSection.component.js";
+import { LightRequirementSection } from "#site-components/plant/LightRequirementSection.component.js";
+import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
+import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 
 /**
  * @import { BloomColor, PlantData } from "./types/plantData.js"
@@ -29,36 +34,67 @@ export const config = {
   dataEntries: await Promise.all(
     dataEntryPaths.map(async (path) => {
       const fileContents = await readFile(path, "utf8");
+
+      const dataEntryDirectory = path.slice(0, -"data.yml".length);
+
+      const imagePaths = await glob(["images/*.jpg", "images/*.jpeg", "images/*.png", "images/*.webp"], {
+        cwd: dataEntryDirectory,
+        onlyFiles: true,
+        absolute: true,
+      });
+
+      const images = await Promise.all(
+        imagePaths.map(async (imagePath) => {
+          const result = await Image(imagePath, eleventyImageConfig);
+
+          const imageMetdata = JSON.parse(await readFile(
+            `${imagePath}.meta.json`,
+            "utf8"
+          ));
+
+          return {
+            ...result,
+            meta: imageMetdata,
+          }
+        })
+      );
+
       return {
-        permalink: path.slice(
+        permalink: dataEntryDirectory.slice(
           baseDataFileDirectoryPath.length,
-          -"data.yml".length
         ),
+        images,
         ...parseYaml(fileContents),
       };
     })
   ),
 };
 
-const lightRequirementNames = {
-  1: "Full Shade",
-  2: "Dappled Shade",
-  3: "Partial Shade",
-  4: "Partial Sun",
-  5: "Full Sun",
-}
-
 /**
  * @param {Object} props
  * @param {PlantData} props.dataEntry
  */
 export default function Plant({ dataEntry }) {
-  const lightRequirementRange = parseLightRequirementRange(dataEntry.light);
-
   return html`<${Base}>
     <header>
       <h1>${dataEntry.common_names[0]}</h1>
       <p aria-description="Scientific name">${dataEntry.scientific_name}</p>
+      <ul id="plant-images">
+      ${dataEntry.images.map((image) => {
+        const imageTagImage = image.jpeg[image.jpeg.length - 1];
+
+        return html`<li style="aspect-ratio: ${imageTagImage.width} / ${imageTagImage.height}">
+        <figure>
+        <picture>
+          <source type="image/webp" srcset="${image.webp.map((img) => img.srcset).join(",")}" />
+          <source type="image/jpeg" srcset="${image.jpeg.map((img) => img.srcset).join(",")}" />
+          <img src="${imageTagImage.url}" alt="${image.meta.alt}" width=${imageTagImage.width} height=${imageTagImage.height} loading="lazy" sizes="auto" />
+        </picture>
+        <figcaption>Photo by <a href=${image.meta.creatorURL}>${image.meta.creatorName}</a></figcaption>
+        </figure>
+        </li>`;
+      })}
+      </ul>
     </header>
     ${dataEntry.common_names.length > 1 ? html`<section>
       <h2>Other common names</h2>
@@ -66,153 +102,69 @@ export default function Plant({ dataEntry }) {
         ${dataEntry.common_names.slice(1).map((name) => html`<li>${name}</li>`)}
       </ul>
     </section>` : null}
-    ${lightRequirementRange ? html`<section>
-      <h2 id="light-header">Light requirements</h2>
-      <${LightRequirementMeter} range=${lightRequirementRange} />
-      <p id="light-desc">
-        ${lightRequirementNames[lightRequirementRange[0]]}${lightRequirementRange[0] !== lightRequirementRange[1] ?
-        ` to ${lightRequirementNames[lightRequirementRange[1]]}`
-        : ""
-      }
-      </p>
-    </section>` : null}
-    ${dataEntry.bloom_color ? html`<${BloomColorSection} colors=${Array.isArray(dataEntry.bloom_color) ? dataEntry.bloom_color : [dataEntry.bloom_color]} />` : null}
-  <//>`;
-}
-
-/**
- * @param {PlantData["light"]} rawLightRequirementValue 
- * @returns { [low: number, high: number] | null }
- */
-const parseLightRequirementRange = (rawLightRequirementValue) => {
-  if (typeof rawLightRequirementValue === "number") {
-    const v = rawLightRequirementValue;
-    if (v < 1 || v > 5) {
-      return null;
-    }
-    return [v, v];
-  }
-
-  const [lowStr, highStr] = rawLightRequirementValue.split("-").map((s) => s.trim());
-  if (!highStr) {
-    const v = parseInt(lowStr, 10);
-    if (Number.isNaN(v) || v < 1 || v > 5) {
-      return null;
-    }
-    return [v, v];
-  }
-
-  const low = parseInt(lowStr, 10);
-  const high = parseInt(highStr, 10);
-  if (Number.isNaN(low) || Number.isNaN(high) || low < 1 || high > 5 || low > high) {
-    return null;
-  }
-  return [low, high];
-};
-
-/**
- * @param {Object} props
- * @param {[low: number, high: number]} props.range
- */
-function LightRequirementMeter({
-  range: [low, high],
-}) {
-  return html`
-    <div
-      id="light-meter"
-      aria-labelledby="light-header"
-      aria-describedby="light-desc"
-      style="--low: ${low}; --high: ${high}"
-    >
-      <div class="meter-fill"></div>
-    </div>
-    <style data-bundle="plant">
-      #light-meter {
-        position: relative;
-        width: 100%;
-        height: 1rem;
-        --grad: linear-gradient(
-          to right,
-          #440,
-          #ff0,
-          #fff
-        );
-        border: 1px solid black;
-        --border-radius: 0.5rem;
-        border-radius: var(--border-radius);
-        position: relative;
-
-        .meter-fill {
-          position: absolute;
-          inset: 0;
-          --left: calc(100% * (var(--low) - 1) / 5);
-          --right: calc(100% - (100% * var(--high) / 5));
-          clip-path: inset(0 var(--right) 0 var(--left) round var(--border-radius));
-          background-image: var(--grad);
-          border-radius: var(--border-radius);
-        }
-
-        .meter-fill::after {
-          /* ::after to add an outline around the meter fill bar */
-          content: "";
-          position: absolute;
-          inset-block: 0;
-          left: var(--left);
-          right: var(--right);
-          border-radius: inherit;
-          outline: 2px solid white;
-          outline-offset: -2px;
-        }
-
-        &::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          background: var(--grad);
-          filter: saturate(0.25) brightness(0.75);
-        }
-      }
-    </style>`;
-}
-
-/**
- * @param {Object} props
- * @param {BloomColor[]} props.colors
- */
-function BloomColorSection({
-  colors,
-}) {
-  return html`
     <section>
-      <h2>Bloom color${colors.length !== 1 ? "s" : ""}</h2>
-      <ul id="bloom-color-list">
-        ${colors.map((color) => html`<li>${color.name}<div class="color-preview-dot" style="--hex: ${color.hex}"></div></li>`)}
-      </ul>
+      <h2>Life cycle</h2>
+      <p>${dataEntry.life_cycle}</p>
     </section>
+    ${dataEntry.bloom_color ? html`<${BloomColorSection} colors=${Array.isArray(dataEntry.bloom_color) ? dataEntry.bloom_color : [dataEntry.bloom_color]} />` : null}
+    ${dataEntry.bloom_time ? html`<section>
+      <h2>Bloom time</h2>
+      <p>${dataEntry.bloom_time.start} to ${dataEntry.bloom_time.end}</p>
+    </section>` : null}
+    <section>
+      <h2>Height</h2>
+      <p>${dataEntry.height}</p>
+    </section>
+    <${LightRequirementSection} lightRequirement=${dataEntry.light} />
+    <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
     <style data-bundle="plant">
-      #bloom-color-list {
+      #plant-images {
         display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        padding: 0;
         list-style: none;
+        flex-wrap: wrap;
+        padding: 0;
+        gap: 1rem;
 
         li {
-          display: flex;
-          gap: 0.5rem;
-          align-items: center;
+          position: relative;
+          min-width: min(240px, 100vw);
+          max-width: 480px;
+          max-height: 320px;
         }
 
-        .color-preview-dot {
-          background-color: var(--hex);
-          width: 1rem;
-          height: 1rem;
-          border-radius: 50%;
-          flex-shrink: 0;
-          outline: 1px solid rgba(0, 0, 0, 0.25);
+        figure {
+          display: contents;
+        }
+
+        figcaption {
+          position: absolute;
+          bottom: 0;
+          padding-block-start: 0.5rem;
+          padding: 0.3rem;
+          color: white;
+          background-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 35%, rgba(0, 0, 0, 0.6) 70%);
+          width: 100%;
+          font-size: 0.8rem;
+          font-style: italic;
+          /* Make the bottom corners conform to the image's border radius */
+          border-radius: 0 0 4px 4px;
+        }
+
+        figcaption a {
+          color: white;
+          text-decoration: underline;
+        }
+
+        img {
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          display: block;
+          border-radius: 4px;
         }
       }
     </style>
-  `;
+  <//>`;
 }
+
+// Plant.css = css``;
