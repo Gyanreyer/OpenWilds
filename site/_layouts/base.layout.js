@@ -1,6 +1,7 @@
+import { css } from "#site-lib/css.js";
 import { html } from "../_lib/html.js";
 
-export default function ({ children }) {
+export default function BaseLayout({ children }) {
   return html`<html lang="en">
     <head>
       <meta charset="utf-8" />
@@ -18,15 +19,16 @@ export default function ({ children }) {
     </head>
     <body>
       ${children}
-      <style>
-        :root {
-          font-family: system-ui, sans-serif;
-        }
-
-        *, *:before, *:after {
-          box-sizing: border-box;
-        }
-      </style>
     </body>
   </html>`;
 }
+
+BaseLayout.css = css`
+  :root {
+    font-family: system-ui, sans-serif;
+  }
+
+  *, *:before, *:after {
+    box-sizing: border-box;
+  }
+`;

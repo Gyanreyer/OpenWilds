@@ -12,26 +12,13 @@ This site is built using a semi-experimental homegrown template setup, so I will
 ## Example component
 
 ```js
-import { getScopedComponentID } from "../_lib/scid.js";
 import { html } from "../_lib/html.js";
-
-const scid = getScopedComponentID();
 
 export function SayHello({ name }) {
   return html`<div data-scid=${scid}>
     <h2>Hello, ${name}!</h2>
     <p>Welcome to OpenWilds.</p>
-  </div>
-  <style data-bundle="SayHello">
-    [data-scid="${scid}"] {
-      h2 {
-        color: red;
-      }
-      p {
-        font-style: italic;
-      }
-    }
-  </style>`;
+  </div>`;
 }
 ```
 
@@ -60,111 +47,95 @@ Any attributes set on a component tag will be passed as props to that component.
 
 ## Styling
 
-Any style tags encountered in HTML templates will be extracted and bundled into CSS files.
-There are a couple things you can do to influence how this behaves:
-
-### Opting out of bundling
-
-You can set `data-inline` on a `<style>` tag to leave it un-processed in the HTML.
-
-### Bundle names
-
-By default, all styles will be rolled into the `default` bundle. However, this default bundle may end up including component styles which
-are not shared between every page, so you can also specify bundle names to get finer-grained CSS bundling.
-
-If you set `data-bundle="<BUNDLE NAME>"` on a `<style>` tag, its contents will be bundled into a CSS file with that name.
-
-These bundles are included by appending a `<link rel="stylesheet">` tag to the page's `<head>` for each bundle file.
-A bundle will only be included on a page if the page contains at least one component with styles from that bundle.
-
-For example, the `SayHello` component from the example above has a style tag like this:
-
-```html
-<style data-bundle="SayHello">
-  [data-scid="${scid}"] {
-    h2 {
-      color: red;
-    }
-    p {
-      font-style: italic;
-    }
-  }
-</style>
-```
-
-This will produce a bundle at `/css/SayHello.css`. Any pages which render this `SayHello` component will
-automatically add the `SayHello` bundle to the `<head>`.
-
-Let's review the expected output from the following `index.page.js` file...
+Styles can be attached to components using the `css` tagged template literal function.
+When a component is rendered, we will gather the attached styles, bundle them into CSS files, and add appropriate `<link rel="stylesheet">` tags
+to the page to load them.
 
 ```js
-import { html } from "./_lib/html.js";
+import { css } from '#site-lib/css.js';
 
-import Base from "./_layouts/base.js";
-import { SayHello } from "./_components/SayHello.component.js";
+export function SayHello(){
+  return html`<h1>Hello in red!</h1>`;
+}
 
-export default function IndexPage({ ...data }) {
-  return html`<html>
-    <head></head>
-    <body>
-      <main>
-        <h1>OpenWilds</h1>
-        <${SayHello} name="Ryan" />
-      </main>
-      <!-- Default bucket styles -->
-      <style>
-        h1 {
-          color: blue;
-        }
-      </style>
-    </body>
-  </html>
+SayHello.css = css`
+  h1 {
+    color: red;
+  }
 `;
-}
 ```
 
-**/css/default.css**
+### Bundling
 
-```css
-h1 {
-  color: blue;
-}
+By default, all styles will be rolled into the `default` bundle. However, this default bundle may end up including component styles which
+are not shared between every page, so you can also specify finer-grained bundles in your CSS.
+
+The `css` tag function has a `bundles` property attached to it which includes all officially supported bundle options. You can add more
+by editing the `bundles` object in `site/_lib/css.js` if necessary.
+
+To designate where some CSS should be bundled, simply insert a bundle symbol into the tagged CSS string; from there, any content which follows
+that symbol marker will be placed in that corresponding bundle.
+
+For example, if we want the `SayHello` component's styles to be bundled in the "plant" bundle instead of "default", we can do this::
+
+```js
+SayHello.css = css`
+  ${css.bundles.plant}
+  h1 {
+    color: red;
+  }
+`;
 ```
 
-**/css/SayHello.css**
+You can even mix and match bundles if you want for some reason:
 
-```css
-[data-scid="0"] h2 {
-  color: red;
-}
-[data-scid="0"] p {
-  font-style: italic;
-}
+```js
+SayHello.css = css`
+  /** This will go to the default bundle */
+  h1 {
+    color: red;
+  }
+
+  ${css.bundles.plant}
+  h1 {
+    /** Override the default style with green in the plant bundle */
+    color: green !important;
+  }
+`;
 ```
 
-**/index.html**
-
-```html
-<html>
-  <head>
-    <link rel="stylesheet" href="/css/default.css">
-    <link rel="stylesheet" href="/css/SayHello.css">
-  </head>
-  <body>
-    <main>
-      <h1>OpenWilds</h1>
-      <div data-scid="0">
-        <h2>Hello, Ryan!</h2>
-        <p>Welcome to OpenWilds.</p>
-      </div>
-    </main>
-  </body>
-</html>
-```
+NOTE: the underlying implementation isn't aware of how to maintain valid CSS syntax,
+so if you place the bundle marker anywhere other than the root level of the CSS,
+it will very likely break things or produce unexpected behavior.
+For instance, `/* ${css.bundles.plant} */` will break because `"/*"` will get placed at the end of the previous bundle and `"*/"` will get placed at the start of the new plant bundle.
 
 ### Scoped styles
 
 We have access to a `getScopedComponentID` util which can be used as a rudimentary way to scope styles within a component.
 The util can be used to generate a unique ID for the component which can be used in HTML attributes and referenced to scope CSS selectors.
 The easiest way to accomplish this is to use CSS nesting syntax to wrap all scoped styles inside a selector for the component ID attribute.
-The example `SayHello` component shown earlier includes a good example of recommended usage of this util.
+Here is a simple example:
+
+```js
+import { html } from '#site-lib/html.js';
+import { css } from '#site-lib/css.js';
+import { getScopedComponentID } from '#site-lib/scid.js';
+
+const scid = getScopedComponentID();
+
+export function MyScopedFunction(){
+  return html`
+    <div data-scid=${scid}>
+      <p>Hello!</p>
+    </div>
+  `;
+}
+
+MyScopedFunction.css = css`
+  [data-scid="${scid}"] {
+    p {
+      color: yellow;
+    }
+  }
+`;
+```

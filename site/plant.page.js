@@ -10,6 +10,7 @@ import { BloomColorSection } from "#site-components/plant/BloomColorSection.comp
 import { LightRequirementSection } from "#site-components/plant/LightRequirementSection.component.js";
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
+import { css } from "#site-lib/css.js";
 
 /**
  * @import { BloomColor, PlantData } from "./types/plantData.js"
@@ -117,54 +118,54 @@ export default function Plant({ dataEntry }) {
     </section>
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
-    <style data-bundle="plant">
-      #plant-images {
-        display: flex;
-        list-style: none;
-        flex-wrap: wrap;
-        padding: 0;
-        gap: 1rem;
-
-        li {
-          position: relative;
-          min-width: min(240px, 100vw);
-          max-width: 480px;
-          max-height: 320px;
-        }
-
-        figure {
-          display: contents;
-        }
-
-        figcaption {
-          position: absolute;
-          bottom: 0;
-          padding-block-start: 0.5rem;
-          padding: 0.3rem;
-          color: white;
-          background-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 35%, rgba(0, 0, 0, 0.6) 70%);
-          width: 100%;
-          font-size: 0.8rem;
-          font-style: italic;
-          /* Make the bottom corners conform to the image's border radius */
-          border-radius: 0 0 4px 4px;
-        }
-
-        figcaption a {
-          color: white;
-          text-decoration: underline;
-        }
-
-        img {
-          max-width: 100%;
-          max-height: 100%;
-          width: auto;
-          display: block;
-          border-radius: 4px;
-        }
-      }
-    </style>
   <//>`;
 }
 
-// Plant.css = css``;
+Plant.css = css`
+  ${css.bundles.plant}
+  #plant-images {
+    display: flex;
+    list-style: none;
+    flex-wrap: wrap;
+    padding: 0;
+    gap: 1rem;
+
+    li {
+      position: relative;
+      min-width: min(240px, 100vw);
+      max-width: 480px;
+      max-height: 320px;
+    }
+
+    figure {
+      display: contents;
+    }
+
+    figcaption {
+      position: absolute;
+      bottom: 0;
+      padding-block-start: 0.5rem;
+      padding: 0.3rem;
+      color: white;
+      background-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 35%, rgba(0, 0, 0, 0.6) 70%);
+      width: 100%;
+      font-size: 0.8rem;
+      font-style: italic;
+      /* Make the bottom corners conform to the image's border radius */
+      border-radius: 0 0 4px 4px;
+    }
+
+    figcaption a {
+      color: white;
+      text-decoration: underline;
+    }
+
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      display: block;
+      border-radius: 4px;
+    }
+  }
+`;

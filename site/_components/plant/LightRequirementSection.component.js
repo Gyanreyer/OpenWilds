@@ -1,3 +1,4 @@
+import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
 import { parseDataRange } from "#site-utils/parseDataRange.js";
 import { PlantDataRangeMeter } from "./PlantDataRangeMeter.component.js";
@@ -37,17 +38,19 @@ export function LightRequirementSection({
       : ""
     }
       </p>
-    </section>
-    <style data-bundle="plant">
-      #light-meter {
-        --grad: linear-gradient(
-          to right,
-          #440,
-          #ff0,
-          #fff
-        );
-        max-width: 400px;
-      }
-    </style>`;
+    </section>`;
 }
+
+LightRequirementSection.css = css`
+  ${css.bundles.plant}
+  #light-meter {
+    --grad: linear-gradient(
+      to right,
+      #440,
+      #ff0,
+      #fff
+    );
+    max-width: 400px;
+  }
+`;
 

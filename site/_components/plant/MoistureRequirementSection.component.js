@@ -1,3 +1,4 @@
+import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
 import { parseDataRange } from "#site-utils/parseDataRange.js";
 import { PlantDataRangeMeter } from "./PlantDataRangeMeter.component.js";
@@ -38,16 +39,18 @@ export function MoistureRequirementSection({
     }
       </p>
     </section>
-    <style data-bundle="plant">
-      #moist-meter {
-        --grad: linear-gradient(
-          to right,
-          #EDC9AF,
-          #93ac86ff,
-          #2D68C4
-        );
-        max-width: 400px;
-      }
-    </style>`;
+  `;
 }
 
+MoistureRequirementSection.css = css`
+  ${css.bundles.plant}
+  #moist-meter {
+    --grad: linear-gradient(
+      to right,
+      #EDC9AF,
+      #93ac86ff,
+      #2D68C4
+    );
+    max-width: 400px;
+  }
+`;

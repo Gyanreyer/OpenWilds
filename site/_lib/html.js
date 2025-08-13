@@ -39,16 +39,32 @@ const DOMAttributeNames = {
 };
 
 /**
+ * @typedef {{
+ *  html: string;
+ *  cssBundles: {
+ *    [bundleName: string]: Set<string>;
+ *  },
+ * }} RenderResult
+ */
+
+/**
+ * @param {unknown} tagNameOrComponent 
+ * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: Record<string, string> }}
+ */
+const isNestedComponent = (tagNameOrComponent) => typeof tagNameOrComponent === 'function';
+
+/**
+ * @param {unknown} child 
+ * @returns {child is RenderResult}
+ */
+const isRenderResultChild = (child) => typeof child === 'object' && child !== null && 'html' in child && "css" in child;
+
+/**
  * Hyperscript reviver that constructs a sanitized HTML string.
  * This is forked from the vhtml library's implementation.
  * https://github.com/developit/vhtml
  *
- * @returns {{
- *  html: string;
- *  css: {
- *    [bucketName: string]: string[]
- *  },
- * }}
+ * @returns {RenderResult}
  */
 function h(tagNameOrComponent, attrs, ...children) {
   let serializedHTMLStr = "";
@@ -57,27 +73,39 @@ function h(tagNameOrComponent, attrs, ...children) {
 
   /**
    * @type {{
-   *  [bucketName: string]: string[]
+   *  [bundleName: string]: Set<string>;
    * }}
    */
-  const cssBuckets = {};
+  const cssBundles = {};
 
   // Sortof component support!
-  if (typeof tagNameOrComponent === 'function') {
-    return tagNameOrComponent({
+  if (isNestedComponent(tagNameOrComponent)) {
+    const componentCSS = tagNameOrComponent.css;
+    if (componentCSS) {
+      for (const bundleName in componentCSS) {
+        cssBundles[bundleName] ??= new Set();
+        cssBundles[bundleName].add(componentCSS[bundleName]);
+      }
+    }
+
+    const {
+      html: componentHTML,
+      cssBundles: componentCSSBuckets = {},
+    } = tagNameOrComponent({
       ...attrs,
       children,
     });
-  }
 
-  if (tagNameOrComponent === "style" && (!("data-inline" in attrs) || attrs["data-inline"] === "false")) {
-    const bucketName = attrs['data-bundle'] || 'default';
+    for (const bucketName in componentCSSBuckets) {
+      cssBundles[bucketName] ??= new Set();
+      for (const chunk of componentCSSBuckets[bucketName]) {
+        cssBundles[bucketName].add(chunk);
+      }
+    }
 
     return {
-      html: "",
-      css: {
-        [bucketName]: [children.map((child) => String(child)).join("").trim()],
-      },
+      html: componentHTML,
+      cssBundles,
     };
   }
 
@@ -104,12 +132,14 @@ function h(tagNameOrComponent, attrs, ...children) {
           }
         } else if (typeof children === "string") {
           serializedHTMLStr += escape(children);
-        } else if (typeof children === "object" && children !== null && "html" in children) {
+        } else if (isRenderResultChild(children)) {
           serializedHTMLStr += children.html;
-          if (children.css) {
-            for (const bucketName in children.css) {
-              cssBuckets[bucketName] ??= [];
-              cssBuckets[bucketName].push(...children.css[bucketName]);
+          if (children.cssBundles) {
+            for (const bucketName in children.cssBundles) {
+              cssBundles[bucketName] ??= new Set();
+              for (const chunk of children.cssBundles[bucketName]) {
+                cssBundles[bucketName].add(chunk);
+              }
             }
           }
         }
@@ -123,7 +153,7 @@ function h(tagNameOrComponent, attrs, ...children) {
 
   return {
     html: serializedHTMLStr,
-    css: cssBuckets,
+    cssBundles,
   };
 }
 

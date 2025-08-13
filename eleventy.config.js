@@ -48,19 +48,39 @@ export default function (eleventyConfig) {
       // when in watch mode.
       cssBundles = {}
     },
+    /**
+     * @param {Object} compileContext 
+     * @param {((data: any) => import('#site-lib/html').RenderResult) & { css?: Record<string, string> }} compileContext.render
+     * @returns {(data: any) => Promise<string>}
+     */
     compile({ render }) {
       return async (data) => {
         const {
           html,
-          css,
+          cssBundles: renderedCSSBundles,
         } = render(data);
 
         let linkHTML = "";
 
-        for (const bundleName in css) {
+        /**
+         * @type {Set<string>}
+         */
+        const linkedStylesheets = new Set();
+
+        // Apply any CSS from the page component, since the returned css bundles only include styles from child components.
+        for (const bundleName in render.css) {
           linkHTML += `<link rel="stylesheet" href="/css/${bundleName}.css">`;
+          linkedStylesheets.add(bundleName);
           cssBundles[bundleName] ??= new Set();
-          for (const chunk of css[bundleName]) {
+          cssBundles[bundleName].add(render.css[bundleName]);
+        }
+
+        for (const bundleName in renderedCSSBundles) {
+          if (!linkedStylesheets.has(bundleName)) {
+            linkHTML += `<link rel="stylesheet" href="/css/${bundleName}.css">`;
+          }
+          cssBundles[bundleName] ??= new Set();
+          for (const chunk of renderedCSSBundles[bundleName]) {
             cssBundles[bundleName].add(chunk);
           }
         }
