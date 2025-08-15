@@ -11,9 +11,12 @@ import { LightRequirementSection } from "#site-components/plant/LightRequirement
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 import { css } from "#site-lib/css.js";
+import { cssBundles } from "#site-bundles/css-bundles.js";
+import { js } from "#site-lib/js.js";
+import { jsBundles } from "#site-bundles/js-bundles.js";
 
 /**
- * @import { BloomColor, PlantData } from "./types/plantData.js"
+ * @import { PlantData } from "./types/plantData.js"
  */
 
 const baseDataFileDirectoryPath = import.meta
@@ -122,7 +125,7 @@ export default function Plant({ dataEntry }) {
 }
 
 Plant.css = css`
-  ${css.bundles.plant}
+  ${cssBundles.plant}
   #plant-images {
     display: flex;
     list-style: none;

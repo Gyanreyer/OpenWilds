@@ -1,6 +1,7 @@
 import { html } from '#site-lib/html.js';
 import { css } from '#site-lib/css.js';
 import { getScopedComponentID } from '#site-lib/scid.js';
+import { cssBundles } from '#site-bundles/css-bundles.js';
 
 const scid = getScopedComponentID();
 
@@ -24,7 +25,7 @@ export function PlantDataRangeMeter({
 }
 
 PlantDataRangeMeter.css = css`
-  ${css.bundles.plant}
+  ${cssBundles.plant}
   [data-scid="${scid}"] {
     position: relative;
     width: 100%;

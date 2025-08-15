@@ -1,5 +1,6 @@
 import { HTMLRewriter } from 'html-rewriter-wasm';
 import { Features, transform as transformCSS } from 'lightningcss';
+import { transform as transformJS } from 'esbuild';
 import {
   writeFile,
   access,
@@ -28,6 +29,7 @@ export default function (eleventyConfig) {
    * @type {Record<string, Set<string>>}
    */
   let cssBundles = {};
+  let jsBundles = {};
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -44,13 +46,14 @@ export default function (eleventyConfig) {
     },
     getData: ["config"],
     init() {
-      // Clear CSS bundles on init so we don't accumulate cruft from past builds
+      // Clear CSS and JS bundles on init so we don't accumulate cruft from past builds
       // when in watch mode.
       cssBundles = {}
+      jsBundles = {};
     },
     /**
      * @param {Object} compileContext 
-     * @param {((data: any) => import('#site-lib/html').RenderResult) & { css?: Record<string, string> }} compileContext.render
+     * @param {((data: any) => import('#site-lib/html').RenderResult) & { css?: Record<string, string>; js?: Record<string, string> }} compileContext.render
      * @returns {(data: any) => Promise<string>}
      */
     compile({ render }) {
@@ -58,36 +61,62 @@ export default function (eleventyConfig) {
         const {
           html,
           cssBundles: renderedCSSBundles,
+          jsBundles: renderedJSBundles,
         } = render(data);
 
-        let linkHTML = "";
+        let cssLinkHTML = "";
+        let jsScriptHTML = "";
 
         /**
          * @type {Set<string>}
          */
-        const linkedStylesheets = new Set();
+        const linkedCSSBundleNames = new Set();
+        /**
+         * @type {Set<string>}
+         */
+        const linkedScriptBundleNames = new Set();
 
-        // Apply any CSS from the page component, since the returned css bundles only include styles from child components.
-        for (const bundleName in render.css) {
-          linkHTML += `<link rel="stylesheet" href="/css/${bundleName}.css">`;
-          linkedStylesheets.add(bundleName);
-          cssBundles[bundleName] ??= new Set();
-          cssBundles[bundleName].add(render.css[bundleName]);
+        // Apply any CSS and JS from the page component, since the returned bundles only include styles and scripts from child components.
+        if (render.css) {
+          for (const bundleName in render.css) {
+            cssBundles[bundleName] ??= new Set();
+            cssBundles[bundleName].add(render.css[bundleName]);
+            linkedCSSBundleNames.add(bundleName);
+          }
+        }
+        if (render.js) {
+          for (const bundleName in render.js) {
+            jsBundles[bundleName] ??= new Set();
+            jsBundles[bundleName].add(render.js[bundleName]);
+            linkedScriptBundleNames.add(bundleName);
+          }
         }
 
         for (const bundleName in renderedCSSBundles) {
-          if (!linkedStylesheets.has(bundleName)) {
-            linkHTML += `<link rel="stylesheet" href="/css/${bundleName}.css">`;
-          }
           cssBundles[bundleName] ??= new Set();
           for (const chunk of renderedCSSBundles[bundleName]) {
             cssBundles[bundleName].add(chunk);
           }
+          linkedCSSBundleNames.add(bundleName);
+        }
+        for (const bundleName in renderedJSBundles) {
+          jsBundles[bundleName] ??= new Set();
+          for (const chunk of renderedJSBundles[bundleName]) {
+            jsBundles[bundleName].add(chunk);
+          }
+          linkedScriptBundleNames.add(bundleName);
+        }
+
+        for (const bundleName of linkedCSSBundleNames) {
+          cssLinkHTML += `<link rel="stylesheet" href="/css/${bundleName}.css">`;
+        }
+        for (const bundleName of linkedScriptBundleNames) {
+          jsScriptHTML += `<script src="/js/${bundleName}.js" type="module" async></script>`;
         }
 
         let outputHTML = "";
 
-        if (!linkHTML) {
+        if (!cssLinkHTML && !jsScriptHTML) {
           outputHTML = html;
         } else {
           const rewriter = new HTMLRewriter((outputChunk) => {
@@ -96,7 +125,7 @@ export default function (eleventyConfig) {
           rewriter.on("head", {
             element: (element) => {
               element.onEndTag((endTag) => {
-                endTag.before(linkHTML, {
+                endTag.before(`${cssLinkHTML}\n${jsScriptHTML}`, {
                   html: true,
                 });
               });
@@ -159,7 +188,56 @@ export default function (eleventyConfig) {
 
         console.log("Writing CSS bundle", bundleName, "to", outputFilePath);
 
-        await writeFile(outputFilePath, code);
+        await writeFile(outputFilePath, code, "utf8");
+      })
+    );
+
+    await Promise.allSettled(
+      Object.entries(jsBundles).map(async ([bundleName, jsChunkSet]) => {
+        const jsContent = Array.from(jsChunkSet.values()).join("");
+        if (jsContent.length === 0) {
+          return;
+        }
+
+        /**
+         * @type {string}
+         */
+        let code;
+        /**
+         * @type {string}
+         */
+        let sourceMap;
+
+        try {
+          const result = await transformJS(jsContent, {
+            minify: true,
+            target: ["es2020"],
+            format: "esm",
+            sourcemap: true,
+            sourcefile: `${bundleName}.js`,
+          });
+          code = `//# sourceMappingURL=${bundleName}.js.map\n${result.code}`;
+          sourceMap = result.map;
+        } catch (err) {
+          console.error("Error processing JS bundle", bundleName, ":", err);
+          throw new Error("Error processing JS bundle " + bundleName + ": " + err.message);
+        }
+
+        const outputDir = resolve(join(output, "js"));
+
+        try {
+          await access(outputDir);
+        } catch (err) {
+          await mkdir(outputDir, { recursive: true });
+        }
+
+        const outputFilePath = join(outputDir, `${bundleName}.js`);
+        const outputSourceMapPath = join(outputDir, `${bundleName}.js.map`);
+
+        console.log("Writing JS bundle", bundleName, "to", outputFilePath);
+
+        await writeFile(outputFilePath, code, "utf8");
+        await writeFile(outputSourceMapPath, sourceMap, "utf8");
       })
     );
   });

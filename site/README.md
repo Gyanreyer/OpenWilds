@@ -8,6 +8,7 @@ This site is built using a semi-experimental homegrown template setup, so I will
   a file at `/site/hello.page.js` will produce a page at `openwilds.org/hello`,
   and `/site/my/path.page.js` will produce a page at `openwilds.org/my/path`
 - HTML templating uses [`htm`](https://github.com/developit/htm) tagged template strings, with a custom plugin to support CSS bundling.
+- Files in the `/public` directory will be directly copied to the output, ie `/public/js/my-script.js` -> `openwilds.org/js/my-script.js`
 
 ## Example component
 
@@ -70,17 +71,18 @@ SayHello.css = css`
 By default, all styles will be rolled into the `default` bundle. However, this default bundle may end up including component styles which
 are not shared between every page, so you can also specify finer-grained bundles in your CSS.
 
-The `css` tag function has a `bundles` property attached to it which includes all officially supported bundle options. You can add more
-by editing the `bundles` object in `site/_lib/css.js` if necessary.
+You can import a `cssBundles` object which includes all officially supported bundle options.
 
 To designate where some CSS should be bundled, simply insert a bundle symbol into the tagged CSS string; from there, any content which follows
 that symbol marker will be placed in that corresponding bundle.
 
-For example, if we want the `SayHello` component's styles to be bundled in the "plant" bundle instead of "default", we can do this::
+For example, if we want the `SayHello` component's styles to be bundled in the "plant" bundle instead of "default", we can do this:
 
 ```js
+import { cssBundles } from "#site-bundles/css-bundles.js";
+
 SayHello.css = css`
-  ${css.bundles.plant}
+  ${cssBundles.plant}
   h1 {
     color: red;
   }
@@ -96,7 +98,7 @@ SayHello.css = css`
     color: red;
   }
 
-  ${css.bundles.plant}
+  ${cssBundles.plant}
   h1 {
     /** Override the default style with green in the plant bundle */
     color: green !important;
@@ -107,7 +109,7 @@ SayHello.css = css`
 NOTE: the underlying implementation isn't aware of how to maintain valid CSS syntax,
 so if you place the bundle marker anywhere other than the root level of the CSS,
 it will very likely break things or produce unexpected behavior.
-For instance, `/* ${css.bundles.plant} */` will break because `"/*"` will get placed at the end of the previous bundle and `"*/"` will get placed at the start of the new plant bundle.
+For instance, `/* ${cssBundles.plant} */` will break because `"/*"` will get placed at the end of the previous bundle and `"*/"` will get placed at the start of the new plant bundle.
 
 ### Scoped styles
 
@@ -137,5 +139,36 @@ MyScopedFunction.css = css`
       color: yellow;
     }
   }
+`;
+```
+
+## Scripts
+
+Simple client-side JavaScript can be bundled with components in a very similar way to CSS; you can attach scripts to a component
+by setting `Component.js` and using the `js` tagged template literal function.
+
+```js
+import { js } from "#site-lib/js.js";
+import { jsBundles } from "#site-bundles/js-bundles.js";
+
+SayHello.js = js`
+  ${jsBundles.plant}
+  console.log("Hello from the plant page!");
+`;
+```
+
+The bundled scripts for each component will be wrapped in block scopes to avoid naming collisions, which means you cannot use top-level import declarations (ie, `import X from "/js/hello.js";`). However, you may use dynamic imports, such as `const X = await import("/js/hello.js");`.
+
+If you have a large/complex script which doesn't make sense to co-locate in the component file, you should
+put it in the `public/js` directory and manually import it either by adding a `<script>` tag to a page's HTML,
+or using a dynamic ESM import in a component script.
+
+```js
+/** /public/js/hello.js */
+console.log("Hello there!");
+
+/** /_components/SayHello.component.js */
+SayHello.js = js`
+  const logHello = import("/js/hello.js");
 `;
 ```

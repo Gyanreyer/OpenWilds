@@ -43,13 +43,16 @@ const DOMAttributeNames = {
  *  html: string;
  *  cssBundles: {
  *    [bundleName: string]: Set<string>;
- *  },
+ *  };
+ *  jsBundles:{
+ *    [bundleName: string]: Set<string>;
+ *  };
  * }} RenderResult
  */
 
 /**
  * @param {unknown} tagNameOrComponent 
- * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: Record<string, string> }}
+ * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: Record<string, string>; js?: Record<string, string> }}
  */
 const isNestedComponent = (tagNameOrComponent) => typeof tagNameOrComponent === 'function';
 
@@ -57,7 +60,7 @@ const isNestedComponent = (tagNameOrComponent) => typeof tagNameOrComponent === 
  * @param {unknown} child 
  * @returns {child is RenderResult}
  */
-const isRenderResultChild = (child) => typeof child === 'object' && child !== null && 'html' in child && "css" in child;
+const isRenderResultChild = (child) => typeof child === 'object' && child !== null && 'html' in child;
 
 /**
  * Hyperscript reviver that constructs a sanitized HTML string.
@@ -78,6 +81,13 @@ function h(tagNameOrComponent, attrs, ...children) {
    */
   const cssBundles = {};
 
+  /**
+   * @type {{
+   *  [bundleName: string]: Set<string>;
+   * }}
+   */
+  const jsBundles = {};
+
   // Sortof component support!
   if (isNestedComponent(tagNameOrComponent)) {
     const componentCSS = tagNameOrComponent.css;
@@ -88,24 +98,41 @@ function h(tagNameOrComponent, attrs, ...children) {
       }
     }
 
+    const componentJS = tagNameOrComponent.js;
+    if (componentJS) {
+      for (const bundleName in componentJS) {
+        jsBundles[bundleName] ??= new Set();
+        jsBundles[bundleName].add(componentJS[bundleName]);
+      }
+    }
+
     const {
       html: componentHTML,
-      cssBundles: componentCSSBuckets = {},
+      cssBundles: componentCSSBundles = {},
+      jsBundles: componentJSBundles = {},
     } = tagNameOrComponent({
       ...attrs,
       children,
     });
 
-    for (const bucketName in componentCSSBuckets) {
+    for (const bucketName in componentCSSBundles) {
       cssBundles[bucketName] ??= new Set();
-      for (const chunk of componentCSSBuckets[bucketName]) {
+      for (const chunk of componentCSSBundles[bucketName]) {
         cssBundles[bucketName].add(chunk);
+      }
+    }
+
+    for (const bucketName in componentJSBundles) {
+      jsBundles[bucketName] ??= new Set();
+      for (const chunk of componentJSBundles[bucketName]) {
+        jsBundles[bucketName].add(chunk);
       }
     }
 
     return {
       html: componentHTML,
       cssBundles,
+      jsBundles,
     };
   }
 
@@ -142,6 +169,14 @@ function h(tagNameOrComponent, attrs, ...children) {
               }
             }
           }
+          if (children.jsBundles) {
+            for (const bucketName in children.jsBundles) {
+              jsBundles[bucketName] ??= new Set();
+              for (const chunk of children.jsBundles[bucketName]) {
+                jsBundles[bucketName].add(chunk);
+              }
+            }
+          }
         }
       };
 
@@ -154,6 +189,7 @@ function h(tagNameOrComponent, attrs, ...children) {
   return {
     html: serializedHTMLStr,
     cssBundles,
+    jsBundles,
   };
 }
 

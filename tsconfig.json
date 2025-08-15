@@ -11,7 +11,8 @@
       "#site-lib/*": ["./site/_lib/*"],
       "#site-components/*": ["./site/_components/*"],
       "#site-layouts/*": ["./site/_layouts/*"],
-      "#site-utils/*": ["./site/_utils/*"]
+      "#site-utils/*": ["./site/_utils/*"],
+      "#site-bundles/*": ["./site/_bundles/*"]
     }
   },
   "include": ["**/*.js", "**/*.ts"]

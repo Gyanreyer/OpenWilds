@@ -4,17 +4,17 @@ export const DEFAULT_BUNDLE = Symbol.for("default");
  * @param {TemplateStringsArray} strings
  * @param  {...any} values
  */
-export function css(strings, ...values) {
+export function js(strings, ...values) {
   /**
    * @type {Record<string, string[]>}
    */
-  const rawCSSBundles = {};
+  const rawJSBundles = {};
 
   let currentBundleName = DEFAULT_BUNDLE.description;
 
   for (let i = 0; i < strings.length; i++) {
     const str = strings[i];
-    const currentBundleArray = (rawCSSBundles[currentBundleName] ??= []);
+    const currentBundleArray = (rawJSBundles[currentBundleName] ??= []);
     currentBundleArray.push(str);
 
     const value = values[i];
@@ -29,17 +29,18 @@ export function css(strings, ...values) {
   /**
    * @type {Record<string, string>}
    */
-  const cssBundles = {};
+  const jsBundles = {};
 
-  for (const bundleName in rawCSSBundles) {
-    const combinedBundleString = rawCSSBundles[bundleName].join("").trim();
+  for (const bundleName in rawJSBundles) {
+    const combinedBundleString = rawJSBundles[bundleName].join("").trim();
     if (!combinedBundleString) {
       // Skip empty bundles
       continue;
     }
 
-    cssBundles[bundleName] = combinedBundleString;
+    // Wrap the bundle inside a block scope to avoid naming collisions
+    jsBundles[bundleName] = `{\n${combinedBundleString}\n}`;
   }
 
-  return cssBundles;
+  return jsBundles;
 }

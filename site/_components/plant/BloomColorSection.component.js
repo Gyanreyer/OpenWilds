@@ -1,3 +1,4 @@
+import { cssBundles } from "#site-bundles/css-bundles.js";
 import { css } from "#site-lib/css.js";
 import { html } from "../../_lib/html.js";
 
@@ -23,7 +24,7 @@ export function BloomColorSection({
 }
 
 BloomColorSection.css = css`
-  ${css.bundles.plant}
+  ${cssBundles.plant}
   #bloom-color-list {
     display: flex;
     flex-direction: column;

@@ -1,3 +1,4 @@
+import { cssBundles } from "#site-bundles/css-bundles.js";
 import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
 import { parseDataRange } from "#site-utils/parseDataRange.js";
@@ -43,7 +44,7 @@ export function MoistureRequirementSection({
 }
 
 MoistureRequirementSection.css = css`
-  ${css.bundles.plant}
+  ${cssBundles.plant}
   #moist-meter {
     --grad: linear-gradient(
       to right,
