@@ -26,19 +26,21 @@ db.pragma("temp_store = MEMORY");
 db.pragma("cache_size = -20000");
 
 db.exec(`
+  --- Drop existing tables if they exist to start from a clean slate
   DROP TABLE IF EXISTS plant_distribution_regions;
   DROP TABLE IF EXISTS distribution_regions;
+  DROP TABLE IF EXISTS plant_bloom_colors;
+  DROP TABLE IF EXISTS plant_common_names;
   DROP TABLE IF EXISTS plants;
 
+  --- Main plants table
   CREATE TABLE IF NOT EXISTS plants (
     id                INTEGER   PRIMARY KEY AUTOINCREMENT,
     path              TEXT      UNIQUE NOT NULL,
-    scientific_name   TEXT      UNIQUE NOT NULL,
-    common_names      JSON      DEFAULT('[]') NOT NULL,
+    scientific_name   TEXT      UNIQUE NOT NULL COLLATE NOCASE,
     life_cycle        TEXT      CHECK(life_cycle IN ('annual', 'biennial', 'perennial')) NOT NULL,
-    bloom_time_start  TEXT,
-    bloom_time_end    TEXT,
-    bloom_colors      JSON      DEFAULT('[]'),
+    bloom_time_start  INTEGER   CHECK(bloom_time_start >= 1 AND bloom_time_start <= 12),
+    bloom_time_end    INTEGER   CHECK(bloom_time_end >= 1 AND bloom_time_end <= 12),
     height_low        INTEGER   NOT NULL,
     height_high       INTEGER   NOT NULL,
     light_low         INTEGER   CHECK(light_low >= 1 AND light_low <= 5) NOT NULL,
@@ -47,6 +49,28 @@ db.exec(`
     moisture_high     INTEGER   CHECK(moisture_high >= 1 AND moisture_high <= 5) NOT NULL
   );
 
+  --- Table to store common names separately for better querying for searches
+  CREATE TABLE IF NOT EXISTS plant_common_names (
+    plant_id      INTEGER   NOT NULL,
+    common_name   TEXT      NOT NULL COLLATE NOCASE,
+
+    PRIMARY KEY (plant_id, common_name),
+    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_common_name ON plant_common_names(common_name);
+
+  --- Table to store bloom colors for each plant
+  CREATE TABLE IF NOT EXISTS plant_bloom_colors (
+    plant_id  INTEGER   NOT NULL,
+    name      TEXT      NOT NULL,
+    hex       TEXT      NOT NULL,
+
+    PRIMARY KEY (plant_id, hex),
+    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
+  );
+
+  --- Enumerates regions (country + state/province) where plants are found
   CREATE TABLE IF NOT EXISTS distribution_regions (
     id            INTEGER   PRIMARY KEY AUTOINCREMENT,
     country_code  TEXT      NOT NULL CHECK(LENGTH(country_code) = 2 AND country_code = UPPER(country_code)),
@@ -54,6 +78,7 @@ db.exec(`
     UNIQUE(country_code, state_code)
   );
 
+  --- Join table linking plants to their distribution regions
   CREATE TABLE IF NOT EXISTS plant_distribution_regions (
     plant_id       INTEGER   NOT NULL,
     region_id      INTEGER   NOT NULL,
@@ -71,11 +96,9 @@ const insertPlantEntry = db.prepare(`
   INSERT INTO plants (
     path,
     scientific_name,
-    common_names,
     life_cycle,
     bloom_time_start,
     bloom_time_end,
-    bloom_colors,
     height_low,
     height_high,
     light_low,
@@ -85,11 +108,9 @@ const insertPlantEntry = db.prepare(`
   ) VALUES (
     @path,
     @scientific_name,
-    json(@common_names),
     @life_cycle,
     @bloom_time_start,
     @bloom_time_end,
-    json(@bloom_colors),
     @height_low,
     @height_high,
     @light_low,
@@ -98,6 +119,72 @@ const insertPlantEntry = db.prepare(`
     @moisture_high
   ) RETURNING id;
 `);
+
+const insertCommonName = db.prepare(`
+  INSERT INTO plant_common_names (
+    plant_id,
+    common_name
+  ) VALUES (
+    @plant_id,
+    @common_name
+  );
+`);
+
+const insertCommonNames = db.transaction(({
+  plant_id,
+  common_names
+}) => {
+  for (const name of common_names) {
+    insertCommonName.run({
+      plant_id,
+      common_name: name.trim(),
+    });
+  }
+});
+
+const insertBloomColor = db.prepare(`
+  INSERT INTO plant_bloom_colors (
+    plant_id,
+    name,
+    hex
+  ) VALUES (
+    @plant_id,
+    @name,
+    @hex
+  );
+`);
+
+const insertBloomColorsForPlant = db.transaction(
+  /**
+   * @param {{
+   *  plant_id: number;
+   *  bloom_color: PlantData["bloom_color"]
+   * }} params
+   */
+  ({
+    plant_id,
+    bloom_color
+  }) => {
+    /**
+     * @type {BloomColor[]}
+     */
+    let normalizedBloomColorArray;
+    if (Array.isArray(bloom_color)) {
+      normalizedBloomColorArray = bloom_color;
+    } else if (bloom_color) {
+      normalizedBloomColorArray = [bloom_color];
+    } else {
+      normalizedBloomColorArray = [];
+    }
+
+    for (const color of normalizedBloomColorArray) {
+      insertBloomColor.run({
+        plant_id,
+        name: color.name.trim(),
+        hex: color.hex.trim(),
+      });
+    }
+  });
 
 const insertDistributionRegion = db.prepare(`
     INSERT INTO distribution_regions (
@@ -132,7 +219,7 @@ const insertPlantDistributionRegion = db.prepare(`
 `);
 
 /**
- * @import { PlantData } from "../site/types/plantData.js"
+ * @import { BloomColor, PlantData } from "../site/types/plantData.js"
  */
 
 const insertPlantEntries = db.transaction(
@@ -147,14 +234,19 @@ const insertPlantEntries = db.transaction(
 
       const [lowMoisture, highMoisture = lowMoisture] = /** @type {string} */(entry.moisture).split("-").map((v) => parseInt(v, 10)) || [];
 
+      let bloomTimeStart = null;
+      let bloomTimeEnd = null;
+      if (entry.bloom_time) {
+        bloomTimeStart = new Date(`${entry.bloom_time.start}-1-01`).getMonth() + 1;
+        bloomTimeEnd = new Date(`${entry.bloom_time.end}-1-01`).getMonth() + 1;
+      }
+
       const { id: plantID } = insertPlantEntry.get({
         path: entry.path,
         scientific_name: entry.scientific_name,
-        common_names: JSON.stringify(entry.common_names),
         life_cycle: entry.life_cycle.toLowerCase(),
-        bloom_time_start: entry.bloom_time?.start || null,
-        bloom_time_end: entry.bloom_time?.end || null,
-        bloom_colors: JSON.stringify(Array.isArray(entry.bloom_color) ? entry.bloom_color : entry.bloom_color ? [entry.bloom_color] : []),
+        bloom_time_start: bloomTimeStart,
+        bloom_time_end: bloomTimeEnd,
         height_low: lowHeight,
         height_high: highHeight,
         light_low: lowLight,
@@ -162,6 +254,9 @@ const insertPlantEntries = db.transaction(
         moisture_low: lowMoisture,
         moisture_high: highMoisture,
       });
+
+      insertCommonNames({ plant_id: plantID, common_names: entry.common_names });
+      insertBloomColorsForPlant({ plant_id: plantID, bloom_color: entry.bloom_color });
 
       if (!entry.distribution) {
         continue;
