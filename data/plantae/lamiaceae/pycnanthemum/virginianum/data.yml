@@ -10,7 +10,7 @@ bloom_time:
 bloom_color:
   name: White
   hex: "#EFF5E9"
-height: 2 to 3 feet
+height: 2-3 feet
 # 1 = full shade, 5 = full sun. Use a range if applicable.
 light: 3-5
 # 1 = dry soil, 5 = wet soil. Use a range if applicable.

@@ -132,7 +132,14 @@ function extractDistribution(csvContent) {
 
   const distribution = {};
 
-  records.forEach((row) => {
+  records.forEach(
+    /**
+     * @param {{
+     *   Country: string;
+     *   State: string;
+     * }} row
+     */
+    (row) => {
     const country = row.Country;
     const state = row.State;
     const countryCode = countryAbbr[country];

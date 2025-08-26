@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "yaml";
-import { getDistributionYamlForScientificName } from "./extractStatesFromUSDADistributionData.mjs";
+import { getDistributionYamlForScientificName } from "./extractStatesFromUSDADistributionData.js";
 
 // Helper to recursively find all data.yml files in a directory
 function findDataYmlFiles(dir) {
