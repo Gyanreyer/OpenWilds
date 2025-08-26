@@ -1,4 +1,4 @@
-export const DEFAULT_BUNDLE = Symbol.for("default");
+import { DEFAULT_BUNDLE_NAME, getBundleName, isBundleObject } from "./bundle.js";
 
 /**
  * @param {TemplateStringsArray} strings
@@ -10,7 +10,7 @@ export function css(strings, ...values) {
    */
   const rawCSSBundles = {};
 
-  let currentBundleName = DEFAULT_BUNDLE.description;
+  let currentBundleName = DEFAULT_BUNDLE_NAME;
 
   for (let i = 0; i < strings.length; i++) {
     const str = strings[i];
@@ -18,10 +18,10 @@ export function css(strings, ...values) {
     currentBundleArray.push(str);
 
     const value = values[i];
-    if (typeof value === "symbol" && value.description) {
-      currentBundleName = value.description;
+    if (isBundleObject(value)) {
+      currentBundleName = getBundleName(value);
     } else if (value !== undefined && value !== null) {
-      // If the value is not a bundle symbol, append it to the current bundle
+      // If the value is not a bundle object, append it to the current bundle as a string
       currentBundleArray.push(String(value));
     }
   }

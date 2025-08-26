@@ -20,7 +20,9 @@ import {
  * @param {UserConfig} eleventyConfig
  */
 export default function (eleventyConfig) {
-  eleventyConfig.addPassthroughCopy("site/public");
+  eleventyConfig.addPassthroughCopy({
+    "site/public": "/",
+  });
   eleventyConfig.addWatchTarget("site/_components/**/*.js");
 
   eleventyConfig.addTemplateFormats("page.js");
@@ -29,6 +31,9 @@ export default function (eleventyConfig) {
    * @type {Record<string, Set<string>>}
    */
   let cssBundles = {};
+  /**
+   * @type {Record<string, Set<string>>}
+   */
   let jsBundles = {};
 
   const encoder = new TextEncoder();
@@ -246,7 +251,7 @@ export default function (eleventyConfig) {
     dir: {
       input: "site",
       layouts: "_layouts",
-      output: "dist",
+      output: "_site_dist",
     },
   };
 }

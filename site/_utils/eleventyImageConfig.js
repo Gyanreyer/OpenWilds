@@ -1,4 +1,4 @@
-const outputDir = import.meta.resolve("../../dist/img/").slice("file://".length);
+const outputDir = import.meta.resolve("../../_site_dist/img/").slice("file://".length);
 
 export const eleventyImageConfig = {
   formats: ["webp", "jpeg"],

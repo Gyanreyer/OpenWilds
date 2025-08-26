@@ -11,9 +11,7 @@ import { LightRequirementSection } from "#site-components/plant/LightRequirement
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 import { css } from "#site-lib/css.js";
-import { cssBundles } from "#site-bundles/css-bundles.js";
-import { js } from "#site-lib/js.js";
-import { jsBundles } from "#site-bundles/js-bundles.js";
+import { bundle } from "#site-lib/bundle.js";
 
 /**
  * @import { PlantData } from "./types/plantData.js"
@@ -125,7 +123,7 @@ export default function Plant({ dataEntry }) {
 }
 
 Plant.css = css`
-  ${cssBundles.plant}
+  ${bundle("plant")}
   #plant-images {
     display: flex;
     list-style: none;

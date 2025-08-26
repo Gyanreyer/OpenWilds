@@ -1,4 +1,4 @@
-import { cssBundles } from "#site-bundles/css-bundles.js";
+import { bundle } from "#site-lib/bundle.js";
 import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
 import { parseDataRange } from "#site-utils/parseDataRange.js";
@@ -43,7 +43,7 @@ export function LightRequirementSection({
 }
 
 LightRequirementSection.css = css`
-  ${cssBundles.plant}
+  ${bundle("plant")}
   #light-meter {
     --grad: linear-gradient(
       to right,

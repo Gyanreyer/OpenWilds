@@ -49,7 +49,7 @@ Any attributes set on a component tag will be passed as props to that component.
 ## Styling
 
 Styles can be attached to components using the `css` tagged template literal function.
-When a component is rendered, we will gather the attached styles, bundle them into CSS files, and add appropriate `<link rel="stylesheet">` tags
+When a component is rendered, we will gather the attached styles, bundle them into CSS files, and automatically add appropriate `<link rel="stylesheet">` tags
 to the page to load them.
 
 ```js
@@ -71,18 +71,16 @@ SayHello.css = css`
 By default, all styles will be rolled into the `default` bundle. However, this default bundle may end up including component styles which
 are not shared between every page, so you can also specify finer-grained bundles in your CSS.
 
-You can import a `cssBundles` object which includes all officially supported bundle options.
-
-To designate where some CSS should be bundled, simply insert a bundle symbol into the tagged CSS string; from there, any content which follows
-that symbol marker will be placed in that corresponding bundle.
+To designate where CSS should be bundled, simply import the `bundle` function and
+call it with your desired bundle name, embedded in the tagged CSS string; from there, any content which follows that bundle marker will be placed in the specified bundle.
 
 For example, if we want the `SayHello` component's styles to be bundled in the "plant" bundle instead of "default", we can do this:
 
 ```js
-import { cssBundles } from "#site-bundles/css-bundles.js";
+import { bundle } from "#site-lib/bundle.js";
 
 SayHello.css = css`
-  ${cssBundles.plant}
+  ${bundle("plant")}
   h1 {
     color: red;
   }
@@ -98,7 +96,7 @@ SayHello.css = css`
     color: red;
   }
 
-  ${cssBundles.plant}
+  ${bundle("plant")}
   h1 {
     /** Override the default style with green in the plant bundle */
     color: green !important;
@@ -109,7 +107,7 @@ SayHello.css = css`
 NOTE: the underlying implementation isn't aware of how to maintain valid CSS syntax,
 so if you place the bundle marker anywhere other than the root level of the CSS,
 it will very likely break things or produce unexpected behavior.
-For instance, `/* ${cssBundles.plant} */` will break because `"/*"` will get placed at the end of the previous bundle and `"*/"` will get placed at the start of the new plant bundle.
+For instance, `/* ${bundle("plant")} */` will break because `"/*"` will get placed at the end of the previous bundle and `"*/"` will get placed at the start of the new plant bundle.
 
 ### Scoped styles
 
@@ -146,14 +144,15 @@ MyScopedFunction.css = css`
 
 Simple client-side JavaScript can be bundled with components in a very similar way to CSS; you can attach scripts to a component
 by setting `Component.js` and using the `js` tagged template literal function.
+All bundles used on a page will be rolled up and automatically added to the `<head>` as `<script type="module" async>` tags.
 
 ```js
 import { js } from "#site-lib/js.js";
-import { jsBundles } from "#site-bundles/js-bundles.js";
+import { bundle } from "#site-lib/bundle.js";
 
 SayHello.js = js`
-  ${jsBundles.plant}
-  console.log("Hello from the plant page!");
+  ${bundle("plant")}
+  console.log("Hello from the plant bundle!");
 `;
 ```
 
