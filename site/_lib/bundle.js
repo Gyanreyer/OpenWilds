@@ -41,23 +41,24 @@ const FILE_URL_PREFIX_LENGTH = FILE_URL_PREFIX.length;
  * @returns {BundleImportObject}
  */
 bundle.import = (importPath, bundleName) => {
+  /**
+   * @type {string}
+   */
   let resolvedFilePath;
 
   if (importPath.startsWith(FILE_URL_PREFIX)) {
     resolvedFilePath = importPath.slice(FILE_URL_PREFIX_LENGTH);
+  } else if (importPath.startsWith("/")) {
+    // Absolute path; resolve relative to the Eleventy input directory
+    resolvedFilePath = resolve(process.env.__ELEVENTY_INPUT_DIR__, `.${importPath}`);
+  } else if (importPath.startsWith("./") || importPath.startsWith("../")) {
+    // Relative path; resolve relative to the caller file's directory
+    const callSites = getCallSites();
+    const callerDirname = dirname(callSites[1].scriptName).slice(FILE_URL_PREFIX_LENGTH);
+    resolvedFilePath = resolve(callerDirname, importPath);
   } else {
-    const isAbsolutePath = importPath.startsWith("/");
-    if (isAbsolutePath) {
-      // Absolute path; resolve relative to the Eleventy input directory
-      resolvedFilePath = resolve(process.env.__ELEVENTY_INPUT_DIR__, `.${importPath}`);
-    } else {
-  // Relative path; resolve relative to the caller file's directory
-      const callSites = getCallSites();
-      const callerDirname = dirname(callSites[1].scriptName).slice(FILE_URL_PREFIX_LENGTH);
-      resolvedFilePath = resolve(callerDirname, importPath);
-    }
+    resolvedFilePath = import.meta.resolve(importPath).slice(FILE_URL_PREFIX_LENGTH);
   }
-
 
   try {
     const fileContents = readFileSync(resolvedFilePath, "utf-8");
