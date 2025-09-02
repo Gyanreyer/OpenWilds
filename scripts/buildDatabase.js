@@ -27,6 +27,7 @@ db.pragma("cache_size = -20000");
 
 db.exec(`
   --- Drop existing tables if they exist to start from a clean slate
+  DROP TABLE IF EXISTS plant_name_fts;
   DROP TABLE IF EXISTS plant_distribution_regions;
   DROP TABLE IF EXISTS distribution_regions;
   DROP TABLE IF EXISTS plant_bloom_colors;
@@ -37,7 +38,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS plants (
     id                INTEGER   PRIMARY KEY AUTOINCREMENT,
     path              TEXT      UNIQUE NOT NULL,
-    scientific_name   TEXT      UNIQUE NOT NULL COLLATE NOCASE,
+    scientific_name   TEXT      UNIQUE NOT NULL,
     life_cycle        TEXT      CHECK(life_cycle IN ('annual', 'biennial', 'perennial')) NOT NULL,
     bloom_time_start  INTEGER   CHECK(bloom_time_start >= 1 AND bloom_time_start <= 12),
     bloom_time_end    INTEGER   CHECK(bloom_time_end >= 1 AND bloom_time_end <= 12),
@@ -52,7 +53,7 @@ db.exec(`
   --- Table to store common names separately for better querying for searches
   CREATE TABLE IF NOT EXISTS plant_common_names (
     plant_id      INTEGER   NOT NULL,
-    common_name   TEXT      NOT NULL COLLATE NOCASE,
+    common_name   TEXT      NOT NULL,
 
     PRIMARY KEY (plant_id, common_name),
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
@@ -86,6 +87,13 @@ db.exec(`
 
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE,
     FOREIGN KEY (region_id) REFERENCES distribution_regions(id) ON DELETE CASCADE
+  );
+
+  -- FTS5 virtual table for searching scientific and common names
+  CREATE VIRTUAL TABLE IF NOT EXISTS plant_name_fts USING fts5(
+    plant_id UNINDEXED,
+    scientific_name,
+    common_name
   );
 
   CREATE INDEX IF NOT EXISTS idx_plants_path ON plants(path);
@@ -218,6 +226,11 @@ const insertPlantDistributionRegion = db.prepare(`
   );
 `);
 
+const insertIntoFTS = db.prepare(`
+  INSERT INTO plant_name_fts (plant_id, scientific_name, common_name)
+  VALUES (@plant_id, @scientific_name, @common_name)
+`);
+
 /**
  * @import { BloomColor, PlantData } from "../site/types/plantData.js"
  */
@@ -255,7 +268,24 @@ const insertPlantEntries = db.transaction(
         moisture_high: highMoisture,
       });
 
+      // Insert scientific name into FTS (with empty common_name)
+      insertIntoFTS.run({
+        plant_id: plantID,
+        scientific_name: entry.scientific_name,
+        common_name: ''
+      });
+
       insertCommonNames({ plant_id: plantID, common_names: entry.common_names });
+
+      // Insert each common name into FTS (with empty scientific_name)
+      for (const name of entry.common_names) {
+        insertIntoFTS.run({
+          plant_id: plantID,
+          scientific_name: '',
+          common_name: name.trim()
+        });
+      }
+
       insertBloomColorsForPlant({ plant_id: plantID, bloom_color: entry.bloom_color });
 
       if (!entry.distribution) {
