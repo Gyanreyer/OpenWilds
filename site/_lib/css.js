@@ -1,4 +1,4 @@
-import { DEFAULT_BUNDLE_NAME, getBundleName, isBundleObject } from "./bundle.js";
+import { DEFAULT_BUNDLE_NAME, getBundleImportFileContents, getBundleName, isBundleImportObject, isBundleObject } from "./bundle.js";
 
 /**
  * @param {TemplateStringsArray} strings
@@ -18,7 +18,21 @@ export function css(strings, ...values) {
     currentBundleArray.push(str);
 
     const value = values[i];
-    if (isBundleObject(value)) {
+    if (isBundleImportObject(value)) {
+
+      let importBundleName = currentBundleName;
+      if (isBundleObject(value)) {
+        importBundleName = getBundleName(value);
+      }
+      try {
+        const fileContents = getBundleImportFileContents(value);
+        const importBundleArray = (rawCSSBundles[importBundleName] ??= []);
+        importBundleArray.push(fileContents);
+      } catch (err) {
+        throw new Error(`bundle.import failed to import file at path "${importBundleName}": ${err.message}`);
+      }
+
+    } else if (isBundleObject(value)) {
       currentBundleName = getBundleName(value);
     } else if (value !== undefined && value !== null) {
       // If the value is not a bundle object, append it to the current bundle as a string

@@ -109,6 +109,31 @@ so if you place the bundle marker anywhere other than the root level of the CSS,
 it will very likely break things or produce unexpected behavior.
 For instance, `/* ${bundle("plant")} */` will break because `"/*"` will get placed at the end of the previous bundle and `"*/"` will get placed at the start of the new plant bundle.
 
+### Importing
+
+You may import external CSS file contents into a bundle using `bundle.import`. File paths will be resolved relative to the component file.
+
+```js
+import { bundle } from '#site-lib/bundle.js';
+
+SayHello.css = css`
+  ${bundle.import("./SayHello.css")}
+`;
+```
+
+By default, the imported file contents will be placed in the most recently defined bundle, but you may also specify a different
+bundle name with a second optional `bundleName` param. Note that specifying a bundle name on an import will ONLY apply to that import,
+and any following CSS content will be placed into the previously specified bundle name.
+
+```js
+SayHello.css = css`
+  ${bundle.import("./SayHello.css", "say-hello")}
+
+  /** This will be placed in the "default" bundle, not "say-hello" */
+  body { }
+`;
+```
+
 ### Scoped styles
 
 We have access to a `getScopedComponentID` util which can be used as a rudimentary way to scope styles within a component.
@@ -157,10 +182,6 @@ SayHello.js = js`
 ```
 
 The bundled scripts for each component will be wrapped in block scopes to avoid naming collisions, which means you cannot use top-level import declarations (ie, `import X from "/js/hello.js";`). However, you may use dynamic imports, such as `const X = await import("/js/hello.js");`.
-
-If you have a large/complex script which doesn't make sense to co-locate in the component file, you should
-put it in the `public/js` directory and manually import it either by adding a `<script>` tag to a page's HTML,
-or using a dynamic ESM import in a component script.
 
 ```js
 /** /public/js/hello.js */

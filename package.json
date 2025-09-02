@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@11ty/eleventy-img": "^6.0.4",
+    "@types/node": "^24.3.0",
     "@typescript/native-preview": "^7.0.0-dev.20250726.1",
     "csv-parse": "^6.1.0",
     "esbuild": "^0.25.9",
