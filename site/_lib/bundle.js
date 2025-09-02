@@ -31,6 +31,9 @@ export const importFileContentsSymbol = Symbol("import-file-contents");
  * }} BundleImportObject
  */
 
+const FILE_URL_PREFIX = "file://";
+const FILE_URL_PREFIX_LENGTH = FILE_URL_PREFIX.length;
+
 /**
  * @param {string} importPath
  * @param {string} [bundleName]
@@ -38,11 +41,26 @@ export const importFileContentsSymbol = Symbol("import-file-contents");
  * @returns {BundleImportObject}
  */
 bundle.import = (importPath, bundleName) => {
-  const callSites = getCallSites();
-  const callerDirname = dirname(callSites[1].scriptName).slice("file://".length);
-  const resolvedFilePathURL = resolve(callerDirname, importPath);
+  let resolvedFilePath;
+
+  if (importPath.startsWith(FILE_URL_PREFIX)) {
+    resolvedFilePath = importPath.slice(FILE_URL_PREFIX_LENGTH);
+  } else {
+    const isAbsolutePath = importPath.startsWith("/");
+    if (isAbsolutePath) {
+      // Absolute path; resolve relative to the Eleventy input directory
+      resolvedFilePath = resolve(process.env.__ELEVENTY_INPUT_DIR__, `.${importPath}`);
+    } else {
+  // Relative path; resolve relative to the caller file's directory
+      const callSites = getCallSites();
+      const callerDirname = dirname(callSites[1].scriptName).slice(FILE_URL_PREFIX_LENGTH);
+      resolvedFilePath = resolve(callerDirname, importPath);
+    }
+  }
+
+
   try {
-    const fileContents = readFileSync(resolvedFilePathURL, "utf-8");
+    const fileContents = readFileSync(resolvedFilePath, "utf-8");
     return ({
       [importFilePathSymbol]: importPath,
       [importFileContentsSymbol]: fileContents,

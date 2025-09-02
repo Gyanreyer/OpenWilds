@@ -151,6 +151,14 @@ export default function (eleventyConfig) {
 
   });
 
+  eleventyConfig.on("eleventy.before", async ({
+    directories: {
+      input
+    },
+  }) => {
+    process.env.__ELEVENTY_INPUT_DIR__ = input;
+  });
+
   eleventyConfig.on("eleventy.after", async (
     { directories: {
       output
