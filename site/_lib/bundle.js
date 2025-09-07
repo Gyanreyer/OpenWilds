@@ -105,3 +105,19 @@ export const getBundleImportFilePath = (bundleImportObj) => bundleImportObj[impo
  * @returns {string}
  */
 export const getBundleImportFileContents = (bundleImportObj) => bundleImportObj[importFileContentsSymbol];
+
+export const bundleSrcPrefix = "__bundle__";
+export const bundleSrcPrefixLength = bundleSrcPrefix.length;
+
+/**
+ * @param {string} bundleName
+ */
+export const bundleSrc = (bundleName) => `${bundleSrcPrefix}${bundleName}`;
+
+
+/**
+ * @param {string} bundleName
+ */
+export const inlinedBundle = (bundleName) => `/*@--BUNDLE--${bundleName}--@*/`;
+
+export const inlinedBundleRegex = /\/\*@--BUNDLE--(.*?)--@\*\//g;

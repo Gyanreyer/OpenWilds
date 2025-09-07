@@ -1,5 +1,5 @@
 import { css } from "#site-lib/css.js";
-import { html } from "../_lib/html.js";
+import { html } from "#site-lib/html.js";
 
 export default function BaseLayout({ children }) {
   return html`<html lang="en">
@@ -16,6 +16,11 @@ export default function BaseLayout({ children }) {
       <meta property="og:type" content="website" />
       <meta property="og:title" :content="title" />
       <meta property="og:description" :content="description" />
+      <style>
+        :root {
+          font-family: system-ui, sans-serif;
+        }
+      </style>
     </head>
     <body>
       ${children}

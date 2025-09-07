@@ -1,5 +1,5 @@
 import { HTMLRewriter } from 'html-rewriter-wasm';
-import { Features, transform as transformCSS } from 'lightningcss';
+import { Features, transform as transformCSS, } from 'lightningcss';
 import { transform as transformJS } from 'esbuild';
 import {
   writeFile,
@@ -10,10 +10,20 @@ import {
   join,
   resolve,
 } from 'node:path';
+import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex } from '#site-lib/bundle.js';
 
 /**
  * @import { UserConfig } from '@11ty/eleventy';
  */
+
+/**
+ * @param {string} bundleName
+ */
+const getCSSBundleHref = (bundleName) => `/css/${bundleName}.css`;
+/**
+ * @param {string} bundleName
+ */
+const getJSBundleSrc = (bundleName) => `/js/${bundleName}.js`;
 
 /**
  *
@@ -30,11 +40,11 @@ export default function (eleventyConfig) {
   /**
    * @type {Record<string, Set<string>>}
    */
-  let cssBundles = {};
+  let globalCssBundles = {};
   /**
    * @type {Record<string, Set<string>>}
    */
-  let jsBundles = {};
+  let globalJsBundles = {};
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -53,8 +63,8 @@ export default function (eleventyConfig) {
     init() {
       // Clear CSS and JS bundles on init so we don't accumulate cruft from past builds
       // when in watch mode.
-      cssBundles = {}
-      jsBundles = {};
+      globalCssBundles = {}
+      globalJsBundles = {};
     },
     /**
      * @param {Object} compileContext 
@@ -62,6 +72,16 @@ export default function (eleventyConfig) {
      * @returns {(data: any) => Promise<string>}
      */
     compile({ render }) {
+      /**
+       * @param {{
+       *  page: {
+       *   url: string;
+       *   outputPath: string;
+       *  };
+       * } & {
+       *  [key: string]: any;
+       * }} data
+       */
       return async (data) => {
         const {
           html,
@@ -69,80 +89,173 @@ export default function (eleventyConfig) {
           jsBundles: renderedJSBundles,
         } = render(data);
 
-        let cssLinkHTML = "";
-        let jsScriptHTML = "";
-
-        /**
-         * @type {Set<string>}
-         */
-        const linkedCSSBundleNames = new Set();
-        /**
-         * @type {Set<string>}
-         */
-        const linkedScriptBundleNames = new Set();
-
-        // Apply any CSS and JS from the page component, since the returned bundles only include styles and scripts from child components.
-        if (render.css) {
-          for (const bundleName in render.css) {
-            cssBundles[bundleName] ??= new Set();
-            cssBundles[bundleName].add(render.css[bundleName]);
-            linkedCSSBundleNames.add(bundleName);
-          }
-        }
-        if (render.js) {
-          for (const bundleName in render.js) {
-            jsBundles[bundleName] ??= new Set();
-            jsBundles[bundleName].add(render.js[bundleName]);
-            linkedScriptBundleNames.add(bundleName);
-          }
-        }
-
-        for (const bundleName in renderedCSSBundles) {
-          cssBundles[bundleName] ??= new Set();
-          for (const chunk of renderedCSSBundles[bundleName]) {
-            cssBundles[bundleName].add(chunk);
-          }
-          linkedCSSBundleNames.add(bundleName);
-        }
-        for (const bundleName in renderedJSBundles) {
-          jsBundles[bundleName] ??= new Set();
-          for (const chunk of renderedJSBundles[bundleName]) {
-            jsBundles[bundleName].add(chunk);
-          }
-          linkedScriptBundleNames.add(bundleName);
-        }
-
-        for (const bundleName of linkedCSSBundleNames) {
-          cssLinkHTML += `<link rel="stylesheet" href="/css/${bundleName}.css">`;
-        }
-        for (const bundleName of linkedScriptBundleNames) {
-          jsScriptHTML += `<script src="/js/${bundleName}.js" type="module" async></script>`;
-        }
-
         let outputHTML = "";
 
-        if (!cssLinkHTML && !jsScriptHTML) {
-          outputHTML = html;
-        } else {
-          const rewriter = new HTMLRewriter((outputChunk) => {
-            outputHTML += decoder.decode(outputChunk);
-          });
-          rewriter.on("head", {
-            element: (element) => {
-              element.onEndTag((endTag) => {
-                endTag.before(`${cssLinkHTML}\n${jsScriptHTML}`, {
+        const rewriter = new HTMLRewriter((outputChunk) => {
+          outputHTML += decoder.decode(outputChunk);
+        });
+
+        rewriter.on(`link[rel="stylesheet"][href^="${bundleSrcPrefix}"], link[rel="preload"][as="style"][href^="${bundleSrcPrefix}"]`, {
+          element: (element) => {
+            const bundleName = element.getAttribute("href").slice(bundleSrcPrefixLength);
+            const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
+            if (cssContent === null) {
+              console.error(`CSS bundle "${bundleName}" is unused on page ${data.page.url}. Removing link tag.`);
+              element.remove();
+              return;
+            }
+
+            if (cssContent.length >= 0) {
+              globalCssBundles[bundleName] ??= new Set();
+              globalCssBundles[bundleName].add(cssContent);
+            }
+
+            element.setAttribute("href", getCSSBundleHref(bundleName));
+          },
+        });
+
+        let currentStyleTagText = "";
+
+        let styleTagIndex = -1;
+
+        rewriter.on("style", {
+          element: async (element) => {
+            styleTagIndex += 1;
+            element.onEndTag(async (endTag) => {
+              if (currentStyleTagText.trim().length === 0) {
+                endTag.remove();
+                currentStyleTagText = "";
+                return;
+              }
+
+              let newStyleTagContents = currentStyleTagText.replaceAll(
+                inlinedBundleRegex,
+                (match, bundleName) => {
+                  const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
+                  if (cssContent === null) {
+                    console.error(`No CSS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
+                    return "";
+                  }
+
+                  return cssContent;
+                }).trim();
+
+              try {
+                const { code } = await transformCSS({
+                  filename: `${encodeURIComponent(data.page.url)}__${styleTagIndex}.css`,
+                  code: encoder.encode(newStyleTagContents),
+                  minify: true,
+                  include: Features.Nesting,
+                });
+                newStyleTagContents = decoder.decode(code);
+              } catch (err) {
+                console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
+              }
+
+              if (newStyleTagContents.length === 0) {
+                endTag.remove();
+              } else {
+                endTag.before(
+                  newStyleTagContents, {
                   html: true,
                 });
-              });
-            },
-          });
+              }
 
-          try {
-            await rewriter.write(encoder.encode(html));
-            await rewriter.end();
-          } finally {
-            rewriter.free();
-          }
+              currentStyleTagText = "";
+            });
+          },
+          text: (textChunk) => {
+            currentStyleTagText += textChunk.text;
+            textChunk.remove();
+          },
+        });
+
+        let currentScriptTagText = "";
+
+        rewriter.on("script", {
+          element: async (element) => {
+            const src = element.getAttribute("src");
+
+            if (src?.startsWith(bundleSrcPrefix)) {
+              const globalImportBundleName = element.getAttribute("href").slice(bundleSrcPrefixLength);
+
+              const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
+              if (jsContent === null) {
+                console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
+                element.remove();
+                return;
+              }
+
+              if (jsContent.length >= 0) {
+                globalJsBundles[globalImportBundleName] ??= new Set();
+                globalJsBundles[globalImportBundleName].add(jsContent);
+              }
+
+              element.setAttribute("src", getJSBundleSrc(globalImportBundleName));
+            }
+
+            const shouldSkipProcessingContents = (element.getAttribute("data-skip-inline-processing") ?? "false") !== "false";
+
+            element.onEndTag(async (endTag) => {
+              if (currentScriptTagText.trim().length === 0) {
+                if (!src) {
+                  endTag.remove();
+                }
+                currentScriptTagText = "";
+                return;
+              }
+
+              let newScriptTagContents = currentScriptTagText.replaceAll(
+                inlinedBundleRegex,
+                (match, bundleName) => {
+                  const jsContent = renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("") : null;
+                  if (jsContent === null) {
+                    console.error(`No JS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
+                    return "";
+                  }
+
+                  return jsContent;
+
+                }).trim();
+
+              if (!shouldSkipProcessingContents) {
+                try {
+                  const { code: transformedCode } = await transformJS(newScriptTagContents, {
+                    minify: true,
+                    target: ["es2020"],
+                    format: "esm",
+                  });
+                  // Use trimEnd to chop off the trailing newline that esbuild adds
+                  newScriptTagContents = transformedCode.trimEnd();
+                } catch (err) {
+                  console.error(`Error processing inlined JS on page ${data.page.url}: ${err}`);
+                }
+              }
+
+              if (newScriptTagContents.length === 0) {
+                endTag.remove();
+              } else {
+                endTag.before(
+                  newScriptTagContents, {
+                  html: true,
+                });
+              }
+
+              currentScriptTagText = "";
+            });
+          },
+          text: (textChunk) => {
+            currentScriptTagText += textChunk.text;
+            textChunk.remove();
+          },
+        });
+
+
+        try {
+          await rewriter.write(encoder.encode(html));
+          await rewriter.end();
+        } finally {
+          rewriter.free();
         }
 
         return outputHTML;
@@ -166,7 +279,7 @@ export default function (eleventyConfig) {
     }
   ) => {
     await Promise.allSettled(
-      Object.entries(cssBundles).map(async ([bundleName, cssChunkSet]) => {
+      Object.entries(globalCssBundles).map(async ([bundleName, cssChunkSet]) => {
         const cssContent = Array.from(cssChunkSet.values()).join("");
         if (cssContent.length === 0) {
           return;
@@ -206,7 +319,7 @@ export default function (eleventyConfig) {
     );
 
     await Promise.allSettled(
-      Object.entries(jsBundles).map(async ([bundleName, jsChunkSet]) => {
+      Object.entries(globalJsBundles).map(async ([bundleName, jsChunkSet]) => {
         const jsContent = Array.from(jsChunkSet.values()).join("");
         if (jsContent.length === 0) {
           return;
@@ -216,7 +329,7 @@ export default function (eleventyConfig) {
          * @type {string}
          */
         let code;
-        /**
+        /*n*
          * @type {string}
          */
         let sourceMap;

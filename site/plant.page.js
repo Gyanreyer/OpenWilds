@@ -11,7 +11,7 @@ import { LightRequirementSection } from "#site-components/plant/LightRequirement
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 import { css } from "#site-lib/css.js";
-import { bundle } from "#site-lib/bundle.js";
+import { bundle, bundleSrc, inlinedBundle } from "#site-lib/bundle.js";
 
 /**
  * @import { PlantData } from "./types/plantData.js"
@@ -119,6 +119,10 @@ export default function Plant({ dataEntry }) {
     </section>
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
+    <script type="module" async>
+      ${inlinedBundle("plant")}
+    </script>
+    <link rel="stylesheet" href="${bundleSrc("plant")}" />
   <//>`;
 }
 
