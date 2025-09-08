@@ -73,6 +73,15 @@ export default function (eleventyConfig) {
      */
     compile({ render }) {
       /**
+       * Object to cache results from processing inline bundles so we don't re-process the same
+       * content multiple times. Doing this on the page template level because that tends to be where
+       * inlined content duplication happens the most.
+       *
+       * @type {Record<string, string>}
+       */
+      const processedInlineBundleCache = {};
+
+      /**
        * @param {{
        *  page: {
        *   url: string;
@@ -120,6 +129,8 @@ export default function (eleventyConfig) {
 
         rewriter.on("style", {
           element: async (element) => {
+            const shouldSkipProcessingContents = (element.getAttribute("data-skip-inline-processing") ?? "false") !== "false";
+
             styleTagIndex += 1;
             element.onEndTag(async (endTag) => {
               if (currentStyleTagText.trim().length === 0) {
@@ -140,16 +151,22 @@ export default function (eleventyConfig) {
                   return cssContent;
                 }).trim();
 
-              try {
-                const { code } = await transformCSS({
-                  filename: `${encodeURIComponent(data.page.url)}__${styleTagIndex}.css`,
-                  code: encoder.encode(newStyleTagContents),
-                  minify: true,
-                  include: Features.Nesting,
-                });
-                newStyleTagContents = decoder.decode(code);
-              } catch (err) {
-                console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
+              if (!shouldSkipProcessingContents) {
+                try {
+                  if (processedInlineBundleCache[newStyleTagContents] !== undefined) {
+                    newStyleTagContents = processedInlineBundleCache[newStyleTagContents];
+                  } else {
+                    const { code } = await transformCSS({
+                      filename: `${encodeURIComponent(data.page.url)}__${styleTagIndex}.css`,
+                      code: encoder.encode(newStyleTagContents),
+                      minify: true,
+                      include: Features.Nesting,
+                    });
+                    newStyleTagContents = processedInlineBundleCache[newStyleTagContents] = decoder.decode(code);
+                  }
+                } catch (err) {
+                  console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
+                }
               }
 
               if (newStyleTagContents.length === 0) {
@@ -220,13 +237,17 @@ export default function (eleventyConfig) {
 
               if (!shouldSkipProcessingContents) {
                 try {
-                  const { code: transformedCode } = await transformJS(newScriptTagContents, {
-                    minify: true,
-                    target: ["es2020"],
-                    format: "esm",
-                  });
-                  // Use trimEnd to chop off the trailing newline that esbuild adds
-                  newScriptTagContents = transformedCode.trimEnd();
+                  if (processedInlineBundleCache[newScriptTagContents] !== undefined) {
+                    newScriptTagContents = processedInlineBundleCache[newScriptTagContents];
+                  } else {
+                    const { code: transformedCode } = await transformJS(newScriptTagContents, {
+                      minify: true,
+                      target: ["es2020"],
+                      format: "esm",
+                    });
+                    // Use trimEnd to chop off the trailing newline that esbuild adds
+                    newScriptTagContents = processedInlineBundleCache[newScriptTagContents] = transformedCode.trimEnd();
+                  }
                 } catch (err) {
                   console.error(`Error processing inlined JS on page ${data.page.url}: ${err}`);
                 }
