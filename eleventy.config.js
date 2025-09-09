@@ -1,4 +1,4 @@
-import { parse as parseHTML } from 'parse5';
+import { parse as parseHTML, serialize as serializeHTML, html as parse5HTML } from 'parse5';
 import { Features, transform as transformCSS, } from 'lightningcss';
 import { transform as transformJS } from 'esbuild';
 import {
@@ -12,7 +12,6 @@ import {
 } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex } from '#site-lib/bundle.js';
-import { NS } from 'parse5/dist/common/html';
 
 /**
  * @import { UserConfig } from '@11ty/eleventy';
@@ -71,27 +70,48 @@ const TRANSFORM_ACTIONS =
 /** @type {const} */({
     REMOVE: "REMOVE",
     REPLACE: "REPLACE",
+    SKIP_CHILDREN: "SKIP_CHILDREN",
     CONTINUE: "CONTINUE",
   });
 
 /**
- * @param {Parse5Types.Node} node
- * @param {(node: Parse5Types.Node) => (typeof TRANSFORM_ACTIONS.REMOVE | [typeof TRANSFORM_ACTIONS.REPLACE, Parse5Types.ChildNode] | typeof TRANSFORM_ACTIONS.CONTINUE)} transformer
+ * @typedef {
+ *  | typeof TRANSFORM_ACTIONS.REMOVE
+ *  | typeof TRANSFORM_ACTIONS.CONTINUE
+ *  | typeof TRANSFORM_ACTIONS.SKIP_CHILDREN
+ *  | [typeof TRANSFORM_ACTIONS.REPLACE, Parse5Types.ChildNode]
+ * } TransformResult
  */
-const transformDocumentNodes = (node, transformer) => {
-  const result = transformer(node);
-  if (result !== TRANSFORM_ACTIONS.CONTINUE) {
+
+/**
+ * @param {Parse5Types.Node} node
+ * @param {(node: Parse5Types.Node) => TransformResult | Promise<TransformResult>} transformer
+ */
+const transformDocumentNodes = async (node, transformer) => {
+  const result = await transformer(node);
+  if (result === TRANSFORM_ACTIONS.SKIP_CHILDREN) {
+    return TRANSFORM_ACTIONS.CONTINUE;
+  } else if (result !== TRANSFORM_ACTIONS.CONTINUE) {
     return result;
   }
 
   if ("childNodes" in node) {
-    for (let i = node.childNodes.length - 1; i >= 0; i--) {
+    let childNodeCount = node.childNodes.length;
+    for (let i = 0; i < childNodeCount; ++i) {
       const childNode = node.childNodes[i];
-      const childResult = transformDocumentNodes(childNode, transformer);
+      if (!childNode) {
+        console.error("Child node is null or undefined:", { node, i, childNodeCount });
+        continue;
+      }
+      const childResult = await transformDocumentNodes(childNode, transformer);
       if (childResult === TRANSFORM_ACTIONS.REMOVE) {
         node.childNodes.splice(i, 1);
+        childNode.parentNode = undefined;
+        --i;
+        --childNodeCount;
       } else if (Array.isArray(childResult) && childResult[0] === TRANSFORM_ACTIONS.REPLACE) {
         node.childNodes.splice(i, 1, childResult[1]);
+        childNode.parentNode = undefined;
       }
     }
   }
@@ -181,89 +201,101 @@ export default function (eleventyConfig) {
           jsBundles: renderedJSBundles,
         } = render(data);
 
-        let bundleTransformedHTML = "";
-
-        const parsedDocument = parseHTML(html, {
+        const parsedDocument = parseHTML(`<!DOCTYPE html>${html}`, {
           onParseError: (err) => {
             console.error(`Error parsing HTML on page ${data.page.url}:`, err);
           },
         });
 
         /**
-         * @type {Record<string, Parse5Types.ChildNode>}
+         * @type {Record<string, Omit<Parse5Types.ChildNode,"parentNode">>}>}
          */
         const deduplicatedHeadNodes = {};
 
         transformDocumentNodes(parsedDocument, (node) => {
-          if (!("tagName" in node)) {
+          if (!("tagName" in node) || node.tagName !== "head") {
             return TRANSFORM_ACTIONS.CONTINUE;
           }
 
-          if ("tagName" in node && node.tagName === "head") {
-            for (const childNode of node.childNodes) {
-              if (!("tagName" in childNode)) {
-                deduplicatedHeadNodes[randomUUID()] = childNode;
-                continue;
-              }
-
-              // De-dupe title, meta, link, script, and style tags
-              switch (childNode.tagName) {
-                case "title": {
-                  // Use the last title tag we encounter
-                  deduplicatedHeadNodes["title"] = childNode;
-                  break;
-                }
-                case "meta": {
-                  const nameAttr = childNode.attrs.find((attr) => attr.name === "name");
-                  if (nameAttr) {
-                    deduplicatedHeadNodes[`meta[name="${nameAttr.value}"]`] = childNode;
-                  }
-                  break;
-                };
-                case "link": {
-                  const relAttr = childNode.attrs.find((attr) => attr.name === "rel") ?? null;
-                  const hrefAttr = childNode.attrs.find((attr) => attr.name === "href") ?? null;
-                  deduplicatedHeadNodes[`link[rel="${relAttr?.value ?? ""}"][href="${hrefAttr?.value ?? ""}"]`] = childNode;
-                  break;
-                };
-                case "script": {
-                  const srcAttr = childNode.attrs.find((attr) => attr.name === "src") ?? null;
-                  if (srcAttr) {
-                    deduplicatedHeadNodes[`script[src="${srcAttr.value}"]`] = childNode;
-                  } else {
-                    let scriptContent = "";
-                    for (const scriptChildNode of childNode.childNodes) {
-                      if (scriptChildNode.nodeName === "#text" && "value" in scriptChildNode) {
-                        scriptContent += scriptChildNode.value;
-                      }
-                    }
-                    const scriptContentHash = createHash("md5").update(scriptContent).digest("hex");
-                    deduplicatedHeadNodes[`script/${scriptContentHash}`] = childNode;
-                  }
-                  break;
-                }
-                case "style": {
-                  let styleContent = "";
-                  for (const styleChildNode of childNode.childNodes) {
-                    if (styleChildNode.nodeName === "#text" && "value" in styleChildNode) {
-                      styleContent += styleChildNode.value;
-                    }
-                  }
-                  const styleContentHash = createHash("md5").update(styleContent).digest("hex");
-                  deduplicatedHeadNodes[`style/${styleContentHash}`] = childNode;
-                  break;
-                }
-                default: {
-                  deduplicatedHeadNodes[randomUUID()] = childNode;
-                  break;
-                }
-              }
+          for (const {
+            parentNode,
+            ...childNode
+          } of node.childNodes) {
+            if (!("tagName" in childNode)) {
+              deduplicatedHeadNodes[randomUUID()] = childNode;
+              continue;
             }
 
-            return TRANSFORM_ACTIONS.REMOVE;
+            // De-dupe title, meta, link, script, and style tags
+            switch (childNode.tagName) {
+              case "title": {
+                // Use the last title tag we encounter
+                deduplicatedHeadNodes["title"] = childNode;
+                break;
+              }
+              case "meta": {
+                const nameAttr = childNode.attrs.find((attr) => attr.name === "name");
+                if (nameAttr) {
+                  deduplicatedHeadNodes[`meta[name="${nameAttr.value}"]`] = childNode;
+                }
+                const charsetAttr = childNode.attrs.find((attr) => attr.name === "charset");
+                if (charsetAttr) {
+                  deduplicatedHeadNodes[`meta[charset="${charsetAttr.value}"]`] = childNode;
+                }
+                const propertyAttr = childNode.attrs.find((attr) => attr.name === "property");
+                if (propertyAttr) {
+                  deduplicatedHeadNodes[`meta[property="${propertyAttr.value}"]`] = childNode;
+                }
+                const httpEquivAttr = childNode.attrs.find((attr) => attr.name === "http-equiv");
+                if (httpEquivAttr) {
+                  deduplicatedHeadNodes[`meta[http-equiv="${httpEquivAttr.value}"]`] = childNode;
+                }
+                if (!nameAttr && !charsetAttr && !propertyAttr && !httpEquivAttr) {
+                  deduplicatedHeadNodes[randomUUID()] = childNode;
+                }
+                break;
+              };
+              case "link": {
+                const relAttr = childNode.attrs.find((attr) => attr.name === "rel") ?? null;
+                const hrefAttr = childNode.attrs.find((attr) => attr.name === "href") ?? null;
+                deduplicatedHeadNodes[`link[rel="${relAttr?.value ?? ""}"][href="${hrefAttr?.value ?? ""}"]`] = childNode;
+                break;
+              };
+              case "script": {
+                const srcAttr = childNode.attrs.find((attr) => attr.name === "src") ?? null;
+                if (srcAttr) {
+                  deduplicatedHeadNodes[`script[src="${srcAttr.value}"]`] = childNode;
+                } else {
+                  let scriptContent = "";
+                  for (const scriptChildNode of childNode.childNodes) {
+                    if (scriptChildNode.nodeName === "#text" && "value" in scriptChildNode) {
+                      scriptContent += scriptChildNode.value;
+                    }
+                  }
+                  const scriptContentHash = createHash("md5").update(scriptContent).digest("hex");
+                  deduplicatedHeadNodes[`script/${scriptContentHash}`] = childNode;
+                }
+                break;
+              }
+              case "style": {
+                let styleContent = "";
+                for (const styleChildNode of childNode.childNodes) {
+                  if (styleChildNode.nodeName === "#text" && "value" in styleChildNode) {
+                    styleContent += styleChildNode.value;
+                  }
+                }
+                const styleContentHash = createHash("md5").update(styleContent).digest("hex");
+                deduplicatedHeadNodes[`style/${styleContentHash}`] = childNode;
+                break;
+              }
+              default: {
+                deduplicatedHeadNodes[randomUUID()] = childNode;
+                break;
+              }
+            }
           }
 
-          return TRANSFORM_ACTIONS.CONTINUE;
+          return TRANSFORM_ACTIONS.REMOVE;
         });
 
         const rootHTMLTag = queryDocumentNode(parsedDocument,
@@ -273,210 +305,252 @@ export default function (eleventyConfig) {
           (node) => "tagName" in node && node.tagName === "html"
         );
 
-        rootHTMLTag.childNodes.unshift({
+        if (Object.values(deduplicatedHeadNodes).length > 0) {
+          console.log("Deduplicated head nodes:", Object.keys(deduplicatedHeadNodes));
+          console.log("ROOT", rootHTMLTag);
+        }
+
+        /**
+         * @type {Parse5Types.ParentNode}
+         */
+        const newHeadTag = {
           nodeName: "head",
           tagName: "head",
           attrs: [],
-          namespaceURI: NS.HTML,
+          namespaceURI: parse5HTML.NS.HTML,
           parentNode: rootHTMLTag,
-          childNodes: Object.values(deduplicatedHeadNodes),
-        })
+          childNodes: [],
+          sourceCodeLocation: undefined,
+        };
 
-        const bundleResolutionTransformRewriter = new HTMLRewriter((outputChunk) => {
-          bundleTransformedHTML += decoder.decode(outputChunk);
-        });
+        newHeadTag.childNodes = Object.values(deduplicatedHeadNodes).map(
+          /**
+           * @returns {*}
+           */
+          (node) => ({
+            ...node,
+            parentNode: newHeadTag,
+          }));
 
-        bundleResolutionTransformRewriter.on(`link[rel = "stylesheet"][href ^= "${bundleSrcPrefix}"], link[rel = "preload"][as = "style"][href ^= "${bundleSrcPrefix}"]`, {
-          element: (element) => {
-            const bundleName = element.getAttribute("href").slice(bundleSrcPrefixLength);
-            const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
-            if (cssContent === null) {
-              console.error(`CSS bundle "${bundleName}" is unused on page ${data.page.url}. Removing link tag.`);
-              element.remove();
-              return;
+        transformDocumentNodes(parsedDocument,
+          async (node) => {
+            if (!("tagName" in node) || node.tagName !== "link") {
+              return TRANSFORM_ACTIONS.CONTINUE;
             }
 
-            if (cssContent.length >= 0) {
-              globalCssBundles[bundleName] ??= new Set();
-              globalCssBundles[bundleName].add(cssContent);
+            const relAttr = node.attrs.find((attr) => attr.name === "rel") ?? null;
+
+            if (relAttr.value === "preload") {
+              // Stylesheets maybe be imported via preload links, but only if they have `as="style"`
+              const asAttr = node.attrs.find((attr) => attr.name === "as") ?? null;
+              if (asAttr.value !== "style") {
+                return TRANSFORM_ACTIONS.CONTINUE;
+              }
+            } else if (relAttr.value !== "stylesheet") {
+              return TRANSFORM_ACTIONS.CONTINUE;
             }
 
-            element.setAttribute("href", getCSSBundleHref(bundleName));
+            const hrefAttr = node.attrs.find((attr) => attr.name === "href") ?? null;
+
+            if (!hrefAttr || !hrefAttr.value.startsWith(bundleSrcPrefix)) {
+              return TRANSFORM_ACTIONS.CONTINUE;
+            }
+
+            const globalImportBundleName = hrefAttr.value.slice(bundleSrcPrefixLength);
+            const cssContent = renderedCSSBundles[globalImportBundleName] ? Array.from(renderedCSSBundles[globalImportBundleName]).join("") : null;
+            if (!cssContent) {
+              console.error(`CSS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing link tag.`);
+              // Remove the link if the bundle is not used on this page
+              return TRANSFORM_ACTIONS.REMOVE;
+            }
+
+            globalCssBundles[globalImportBundleName] ??= new Set();
+            globalCssBundles[globalImportBundleName].add(cssContent);
+
+            hrefAttr.value = getCSSBundleHref(globalImportBundleName);
+
+            return TRANSFORM_ACTIONS.CONTINUE;
           },
-        });
-
-        let currentStyleTagText = "";
+        );
 
         let styleTagIndex = -1;
-
-        bundleResolutionTransformRewriter.on("style", {
-          element: async (element) => {
-            const shouldSkipProcessingContents = (element.getAttribute("data-skip-inline-processing") ?? "false") !== "false";
-
-            styleTagIndex += 1;
-            element.onEndTag(async (endTag) => {
-              if (currentStyleTagText.trim().length === 0) {
-                endTag.remove();
-                currentStyleTagText = "";
-                return;
-              }
-
-              let newStyleTagContents = currentStyleTagText.replaceAll(
-                inlinedBundleRegex,
-                (match, bundleName) => {
-                  const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
-                  if (cssContent === null) {
-                    console.error(`No CSS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
-                    return "";
-                  }
-
-                  return cssContent;
-                }).trim();
-
-              const styleTagContentHash = createHash("md5").update(newStyleTagContents).digest("hex");
-
-              if (!shouldSkipProcessingContents) {
-                try {
-                  if (processedInlineBundleCache[styleTagContentHash] !== undefined) {
-                    newStyleTagContents = processedInlineBundleCache[styleTagContentHash];
-                  } else {
-                    const { code } = await transformCSS({
-                      filename: `${encodeURIComponent(data.page.url)}__${styleTagIndex}.css`,
-                      code: encoder.encode(newStyleTagContents),
-                      minify: true,
-                      include: Features.Nesting,
-                    });
-                    newStyleTagContents = processedInlineBundleCache[styleTagContentHash] = decoder.decode(code);
-                  }
-                } catch (err) {
-                  console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
-                }
-              }
-
-              if (newStyleTagContents.length === 0) {
-                endTag.remove();
-              } else {
-                endTag.before(
-                  newStyleTagContents, {
-                  html: true,
-                });
-              }
-
-              currentStyleTagText = "";
-            });
-          },
-          text: (textChunk) => {
-            currentStyleTagText += textChunk.text;
-            textChunk.remove();
-          },
-        });
-
-        let currentScriptTagText = "";
-
-        bundleResolutionTransformRewriter.on("script", {
-          element: async (element) => {
-            const src = element.getAttribute("src");
-
-            if (src?.startsWith(bundleSrcPrefix)) {
-              const globalImportBundleName = element.getAttribute("href").slice(bundleSrcPrefixLength);
-
-              const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
-              if (jsContent === null) {
-                console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
-                element.remove();
-                return;
-              }
-
-              if (jsContent.length >= 0) {
-                globalJsBundles[globalImportBundleName] ??= new Set();
-                globalJsBundles[globalImportBundleName].add(jsContent);
-              }
-
-              element.setAttribute("src", getJSBundleSrc(globalImportBundleName));
+        transformDocumentNodes(parsedDocument,
+          (node) => {
+            if (!("tagName" in node) || node.tagName !== "style") {
+              return TRANSFORM_ACTIONS.CONTINUE;
             }
 
-            const shouldSkipProcessingContents = (element.getAttribute("data-skip-inline-processing") ?? "false") !== "false";
+            styleTagIndex += 1;
 
-            element.onEndTag(async (endTag) => {
-              if (currentScriptTagText.trim().length === 0) {
-                if (!src) {
-                  endTag.remove();
-                }
-                currentScriptTagText = "";
-                return;
+            let shouldSkipProcessingContents = false;
+            node.attrs = node.attrs.filter((attr) => {
+              if (attr.name === "data-skip-inline-processing") {
+                shouldSkipProcessingContents = (attr.value ?? "false") !== "false";
+                // Remove this attribute after processing it
+                return false;
               }
-
-              let newScriptTagContents = currentScriptTagText.replaceAll(
-                inlinedBundleRegex,
-                (match, bundleName) => {
-                  const jsContent = renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("") : null;
-                  if (jsContent === null) {
-                    console.error(`No JS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
-                    return "";
-                  }
-
-                  return jsContent;
-
-                }).trim();
-
-              const scriptTagContentHash = createHash("md5").update(newScriptTagContents).digest("hex");
-
-              if (!shouldSkipProcessingContents) {
-                try {
-                  if (processedInlineBundleCache[scriptTagContentHash] !== undefined) {
-                    newScriptTagContents = processedInlineBundleCache[scriptTagContentHash];
-                  } else {
-                    const { code: transformedCode } = await transformJS(newScriptTagContents, {
-                      minify: true,
-                      target: ["es2020"],
-                      format: "esm",
-                    });
-                    // Use trimEnd to chop off the trailing newline that esbuild adds
-                    newScriptTagContents = processedInlineBundleCache[scriptTagContentHash] = transformedCode.trimEnd();
-                  }
-                } catch (err) {
-                  console.error(`Error processing inlined JS on page ${data.page.url}: ${err}`);
-                }
-              }
-
-              if (newScriptTagContents.length === 0) {
-                endTag.remove();
-              } else {
-                endTag.before(
-                  newScriptTagContents, {
-                  html: true,
-                });
-              }
-
-              currentScriptTagText = "";
+              return true;
             });
+
+            let styleTagText = "";
+            for (const childNode of node.childNodes) {
+              if (childNode.nodeName === "#text" && "value" in childNode) {
+                styleTagText += childNode.value;
+              }
+            }
+
+            styleTagText = styleTagText.trim();
+            if (styleTagText.length === 0) {
+              console.warn(`Empty <style> tag found on page ${data.page.url}. Removing.`);
+              return TRANSFORM_ACTIONS.REMOVE;
+            }
+
+            styleTagText = styleTagText.replaceAll(
+              inlinedBundleRegex,
+              (match, bundleName) => {
+                const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
+                if (cssContent === null) {
+                  console.error(`No CSS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
+                  return "";
+                }
+
+                return cssContent;
+              }
+            );
+
+            const styleTagContentHash = createHash("md5").update(styleTagText).digest("hex");
+
+            if (!shouldSkipProcessingContents) {
+              try {
+                if (processedInlineBundleCache[styleTagContentHash] !== undefined) {
+                  styleTagText = processedInlineBundleCache[styleTagContentHash];
+                } else {
+                  const { code } = transformCSS({
+                    filename: `${encodeURIComponent(data.page.url)}__<style>(${styleTagIndex}).css`,
+                    code: encoder.encode(styleTagText),
+                    minify: true,
+                    include: Features.Nesting,
+                  });
+                  styleTagText = processedInlineBundleCache[styleTagContentHash] = decoder.decode(code);
+                }
+              } catch (err) {
+                console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
+              }
+            }
+
+            if (styleTagText.length === 0) {
+              console.warn(`Empty <style> tag found on page ${data.page.url} after processing. Removing.`);
+              return TRANSFORM_ACTIONS.REMOVE;
+            }
+
+            node.childNodes = [{
+              nodeName: "#text",
+              value: styleTagText,
+              parentNode: node,
+            }];
+            return TRANSFORM_ACTIONS.CONTINUE;
           },
-          text: (textChunk) => {
-            currentScriptTagText += textChunk.text;
-            textChunk.remove();
+        );
+
+        let scriptTagIndex = 0;
+        transformDocumentNodes(parsedDocument,
+          async (node) => {
+            if (!("tagName" in node) || node.tagName !== "script") {
+              return TRANSFORM_ACTIONS.CONTINUE;
+            }
+
+            scriptTagIndex += 1;
+
+            const srcAttr = node.attrs.find((attr) => attr.name === "src") ?? null;
+            if (srcAttr) {
+              if (srcAttr.value.startsWith(bundleSrcPrefix)) {
+                const globalImportBundleName = srcAttr.value.slice(bundleSrcPrefixLength);
+                const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
+                if (!jsContent) {
+                  console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
+                  // Remove the script if the bundle is not used on this page
+                  return TRANSFORM_ACTIONS.REMOVE;
+                }
+
+                globalJsBundles[globalImportBundleName] ??= new Set();
+                globalJsBundles[globalImportBundleName].add(jsContent);
+
+                srcAttr.value = getJSBundleSrc(globalImportBundleName);
+              }
+
+              return TRANSFORM_ACTIONS.CONTINUE;
+            }
+
+            let shouldSkipProcessingContents = false;
+            node.attrs = node.attrs.filter((attr) => {
+              if (attr.name === "data-skip-inline-processing") {
+                shouldSkipProcessingContents = (attr.value ?? "false") !== "false";
+                // Remove this attribute after processing it
+                return false;
+              }
+              return true;
+            });
+
+            let scriptTagText = "";
+            for (const childNode of node.childNodes) {
+              if (childNode.nodeName === "#text" && "value" in childNode) {
+                scriptTagText += childNode.value;
+              }
+            }
+            scriptTagText = scriptTagText.trim();
+
+            if (scriptTagText.length === 0) {
+              console.warn(`Empty <script> tag found on page ${data.page.url}. Removing.`);
+              return TRANSFORM_ACTIONS.REMOVE;
+            }
+
+            scriptTagText = scriptTagText.replaceAll(
+              inlinedBundleRegex,
+              (match, bundleName) => {
+                const jsContent = renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("") : null;
+                if (jsContent === null) {
+                  console.error(`No JS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
+                  return "";
+                }
+
+                return jsContent;
+              }
+            );
+
+            const scriptTagContentHash = createHash("md5").update(scriptTagText).digest("hex");
+
+            if (!shouldSkipProcessingContents) {
+              try {
+                if (processedInlineBundleCache[scriptTagContentHash] !== undefined) {
+                  scriptTagText = processedInlineBundleCache[scriptTagContentHash];
+                } else {
+                  const { code: transformedCode } = await transformJS(scriptTagText, {
+                    minify: true,
+                    target: ["es2020"],
+                    format: "esm",
+                  });
+                  scriptTagText = processedInlineBundleCache[scriptTagContentHash] = transformedCode.trimEnd();
+                }
+              } catch (err) {
+                console.error(`Error processing inlined JS on page ${data.page.url}: ${err}`);
+              }
+            }
+
+            if (scriptTagText.length === 0) {
+              console.warn(`Empty <script> tag found on page ${data.page.url} after processing. Removing.`);
+              return TRANSFORM_ACTIONS.REMOVE;
+            }
+
+            node.childNodes = [{
+              nodeName: "#text",
+              value: scriptTagText,
+              parentNode: node,
+            }];
+            return TRANSFORM_ACTIONS.CONTINUE;
           },
-        });
+        );
 
-        // TODO: Support for merging <head> tags
-        // How this would need to work...
-        // - Start with the bundling rewriter pass above to resolve <link> and <script> tags
-        // - Do a second rewriter pass to go through all head tags, gathering contents and removing them
-        //   - Do a de-duping pass on the gathered head contents as we go:
-        //     - Do a De-de that <title>, <meta>, keeping the last instance of each
-        //     - De-dupe <link> tags by rel + href, keeping the last instance of each
-        //     - De-dupe <script src=> tags based on src, keeping the last instance of each
-        //     - Can we de-dupe inlined <script> and <style> tags in a meaningful way?
-        //       - Yes. By content hash, keeping the first instance of each
-        // - Do a third final rewriter pass to append all gathered <head> contents to the root <head> tag
-
-        try {
-          await bundleResolutionTransformRewriter.write(encoder.encode(html));
-          await bundleResolutionTransformRewriter.end();
-        } finally {
-          bundleResolutionTransformRewriter.free();
-        }
-
-        return bundleTransformedHTML;
+        return serializeHTML(parsedDocument);
       };
     },
 
