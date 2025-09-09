@@ -1,4 +1,4 @@
-import { HTMLRewriter } from 'html-rewriter-wasm';
+import { parse as parseHTML } from 'parse5';
 import { Features, transform as transformCSS, } from 'lightningcss';
 import { transform as transformJS } from 'esbuild';
 import {
@@ -10,11 +10,94 @@ import {
   join,
   resolve,
 } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
 import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex } from '#site-lib/bundle.js';
+import { NS } from 'parse5/dist/common/html';
 
 /**
  * @import { UserConfig } from '@11ty/eleventy';
+ * @import { DefaultTreeAdapterTypes as Parse5Types } from 'parse5';
  */
+
+/**
+ * @template {Parse5Types.Node} T
+ *
+ * @param {Parse5Types.Node} node
+ * @param {(node: Parse5Types.Node) => node is T} callback
+ *
+ * @returns {T | null}
+ */
+const queryDocumentNode = (node, callback) => {
+  if (callback(node)) {
+    return node;
+  }
+
+  if ("childNodes" in node) {
+    for (const childNode of node.childNodes) {
+      const result = queryDocumentNode(childNode, callback);
+      if (result) {
+        return result;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @template {Parse5Types.Node} T[]
+ *
+ * @param {Parse5Types.Node} node
+ * @param {(node: Parse5Types.Node) => node is T} callback
+ * @param {T[]} [accumulator]
+ *
+ * @returns {T[]}
+ */
+const queryAllDocumentNodes = (node, callback, accumulator = []) => {
+  if (callback(node)) {
+    accumulator.push(node);
+  }
+
+  if ("childNodes" in node) {
+    for (const childNode of node.childNodes) {
+      queryAllDocumentNodes(childNode, callback, accumulator);
+    }
+  }
+
+  return accumulator;
+}
+
+const TRANSFORM_ACTIONS =
+/** @type {const} */({
+    REMOVE: "REMOVE",
+    REPLACE: "REPLACE",
+    CONTINUE: "CONTINUE",
+  });
+
+/**
+ * @param {Parse5Types.Node} node
+ * @param {(node: Parse5Types.Node) => (typeof TRANSFORM_ACTIONS.REMOVE | [typeof TRANSFORM_ACTIONS.REPLACE, Parse5Types.ChildNode] | typeof TRANSFORM_ACTIONS.CONTINUE)} transformer
+ */
+const transformDocumentNodes = (node, transformer) => {
+  const result = transformer(node);
+  if (result !== TRANSFORM_ACTIONS.CONTINUE) {
+    return result;
+  }
+
+  if ("childNodes" in node) {
+    for (let i = node.childNodes.length - 1; i >= 0; i--) {
+      const childNode = node.childNodes[i];
+      const childResult = transformDocumentNodes(childNode, transformer);
+      if (childResult === TRANSFORM_ACTIONS.REMOVE) {
+        node.childNodes.splice(i, 1);
+      } else if (Array.isArray(childResult) && childResult[0] === TRANSFORM_ACTIONS.REPLACE) {
+        node.childNodes.splice(i, 1, childResult[1]);
+      }
+    }
+  }
+
+  return TRANSFORM_ACTIONS.CONTINUE;
+};
 
 /**
  * @param {string} bundleName
@@ -98,13 +181,112 @@ export default function (eleventyConfig) {
           jsBundles: renderedJSBundles,
         } = render(data);
 
-        let outputHTML = "";
+        let bundleTransformedHTML = "";
 
-        const rewriter = new HTMLRewriter((outputChunk) => {
-          outputHTML += decoder.decode(outputChunk);
+        const parsedDocument = parseHTML(html, {
+          onParseError: (err) => {
+            console.error(`Error parsing HTML on page ${data.page.url}:`, err);
+          },
         });
 
-        rewriter.on(`link[rel="stylesheet"][href^="${bundleSrcPrefix}"], link[rel="preload"][as="style"][href^="${bundleSrcPrefix}"]`, {
+        /**
+         * @type {Record<string, Parse5Types.ChildNode>}
+         */
+        const deduplicatedHeadNodes = {};
+
+        transformDocumentNodes(parsedDocument, (node) => {
+          if (!("tagName" in node)) {
+            return TRANSFORM_ACTIONS.CONTINUE;
+          }
+
+          if ("tagName" in node && node.tagName === "head") {
+            for (const childNode of node.childNodes) {
+              if (!("tagName" in childNode)) {
+                deduplicatedHeadNodes[randomUUID()] = childNode;
+                continue;
+              }
+
+              // De-dupe title, meta, link, script, and style tags
+              switch (childNode.tagName) {
+                case "title": {
+                  // Use the last title tag we encounter
+                  deduplicatedHeadNodes["title"] = childNode;
+                  break;
+                }
+                case "meta": {
+                  const nameAttr = childNode.attrs.find((attr) => attr.name === "name");
+                  if (nameAttr) {
+                    deduplicatedHeadNodes[`meta[name="${nameAttr.value}"]`] = childNode;
+                  }
+                  break;
+                };
+                case "link": {
+                  const relAttr = childNode.attrs.find((attr) => attr.name === "rel") ?? null;
+                  const hrefAttr = childNode.attrs.find((attr) => attr.name === "href") ?? null;
+                  deduplicatedHeadNodes[`link[rel="${relAttr?.value ?? ""}"][href="${hrefAttr?.value ?? ""}"]`] = childNode;
+                  break;
+                };
+                case "script": {
+                  const srcAttr = childNode.attrs.find((attr) => attr.name === "src") ?? null;
+                  if (srcAttr) {
+                    deduplicatedHeadNodes[`script[src="${srcAttr.value}"]`] = childNode;
+                  } else {
+                    let scriptContent = "";
+                    for (const scriptChildNode of childNode.childNodes) {
+                      if (scriptChildNode.nodeName === "#text" && "value" in scriptChildNode) {
+                        scriptContent += scriptChildNode.value;
+                      }
+                    }
+                    const scriptContentHash = createHash("md5").update(scriptContent).digest("hex");
+                    deduplicatedHeadNodes[`script/${scriptContentHash}`] = childNode;
+                  }
+                  break;
+                }
+                case "style": {
+                  let styleContent = "";
+                  for (const styleChildNode of childNode.childNodes) {
+                    if (styleChildNode.nodeName === "#text" && "value" in styleChildNode) {
+                      styleContent += styleChildNode.value;
+                    }
+                  }
+                  const styleContentHash = createHash("md5").update(styleContent).digest("hex");
+                  deduplicatedHeadNodes[`style/${styleContentHash}`] = childNode;
+                  break;
+                }
+                default: {
+                  deduplicatedHeadNodes[randomUUID()] = childNode;
+                  break;
+                }
+              }
+            }
+
+            return TRANSFORM_ACTIONS.REMOVE;
+          }
+
+          return TRANSFORM_ACTIONS.CONTINUE;
+        });
+
+        const rootHTMLTag = queryDocumentNode(parsedDocument,
+          /**
+           * @returns {node is Parse5Types.Element & { tagName: "head"; nodeName: "head"; }}
+           */
+          (node) => "tagName" in node && node.tagName === "html"
+        );
+
+        rootHTMLTag.childNodes.unshift({
+          nodeName: "head",
+          tagName: "head",
+          attrs: [],
+          namespaceURI: NS.HTML,
+          parentNode: rootHTMLTag,
+          childNodes: Object.values(deduplicatedHeadNodes),
+        })
+
+        const bundleResolutionTransformRewriter = new HTMLRewriter((outputChunk) => {
+          bundleTransformedHTML += decoder.decode(outputChunk);
+        });
+
+        bundleResolutionTransformRewriter.on(`link[rel = "stylesheet"][href ^= "${bundleSrcPrefix}"], link[rel = "preload"][as = "style"][href ^= "${bundleSrcPrefix}"]`, {
           element: (element) => {
             const bundleName = element.getAttribute("href").slice(bundleSrcPrefixLength);
             const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
@@ -127,7 +309,7 @@ export default function (eleventyConfig) {
 
         let styleTagIndex = -1;
 
-        rewriter.on("style", {
+        bundleResolutionTransformRewriter.on("style", {
           element: async (element) => {
             const shouldSkipProcessingContents = (element.getAttribute("data-skip-inline-processing") ?? "false") !== "false";
 
@@ -151,10 +333,12 @@ export default function (eleventyConfig) {
                   return cssContent;
                 }).trim();
 
+              const styleTagContentHash = createHash("md5").update(newStyleTagContents).digest("hex");
+
               if (!shouldSkipProcessingContents) {
                 try {
-                  if (processedInlineBundleCache[newStyleTagContents] !== undefined) {
-                    newStyleTagContents = processedInlineBundleCache[newStyleTagContents];
+                  if (processedInlineBundleCache[styleTagContentHash] !== undefined) {
+                    newStyleTagContents = processedInlineBundleCache[styleTagContentHash];
                   } else {
                     const { code } = await transformCSS({
                       filename: `${encodeURIComponent(data.page.url)}__${styleTagIndex}.css`,
@@ -162,7 +346,7 @@ export default function (eleventyConfig) {
                       minify: true,
                       include: Features.Nesting,
                     });
-                    newStyleTagContents = processedInlineBundleCache[newStyleTagContents] = decoder.decode(code);
+                    newStyleTagContents = processedInlineBundleCache[styleTagContentHash] = decoder.decode(code);
                   }
                 } catch (err) {
                   console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
@@ -189,7 +373,7 @@ export default function (eleventyConfig) {
 
         let currentScriptTagText = "";
 
-        rewriter.on("script", {
+        bundleResolutionTransformRewriter.on("script", {
           element: async (element) => {
             const src = element.getAttribute("src");
 
@@ -235,10 +419,12 @@ export default function (eleventyConfig) {
 
                 }).trim();
 
+              const scriptTagContentHash = createHash("md5").update(newScriptTagContents).digest("hex");
+
               if (!shouldSkipProcessingContents) {
                 try {
-                  if (processedInlineBundleCache[newScriptTagContents] !== undefined) {
-                    newScriptTagContents = processedInlineBundleCache[newScriptTagContents];
+                  if (processedInlineBundleCache[scriptTagContentHash] !== undefined) {
+                    newScriptTagContents = processedInlineBundleCache[scriptTagContentHash];
                   } else {
                     const { code: transformedCode } = await transformJS(newScriptTagContents, {
                       minify: true,
@@ -246,7 +432,7 @@ export default function (eleventyConfig) {
                       format: "esm",
                     });
                     // Use trimEnd to chop off the trailing newline that esbuild adds
-                    newScriptTagContents = processedInlineBundleCache[newScriptTagContents] = transformedCode.trimEnd();
+                    newScriptTagContents = processedInlineBundleCache[scriptTagContentHash] = transformedCode.trimEnd();
                   }
                 } catch (err) {
                   console.error(`Error processing inlined JS on page ${data.page.url}: ${err}`);
@@ -271,15 +457,26 @@ export default function (eleventyConfig) {
           },
         });
 
+        // TODO: Support for merging <head> tags
+        // How this would need to work...
+        // - Start with the bundling rewriter pass above to resolve <link> and <script> tags
+        // - Do a second rewriter pass to go through all head tags, gathering contents and removing them
+        //   - Do a de-duping pass on the gathered head contents as we go:
+        //     - Do a De-de that <title>, <meta>, keeping the last instance of each
+        //     - De-dupe <link> tags by rel + href, keeping the last instance of each
+        //     - De-dupe <script src=> tags based on src, keeping the last instance of each
+        //     - Can we de-dupe inlined <script> and <style> tags in a meaningful way?
+        //       - Yes. By content hash, keeping the first instance of each
+        // - Do a third final rewriter pass to append all gathered <head> contents to the root <head> tag
 
         try {
-          await rewriter.write(encoder.encode(html));
-          await rewriter.end();
+          await bundleResolutionTransformRewriter.write(encoder.encode(html));
+          await bundleResolutionTransformRewriter.end();
         } finally {
-          rewriter.free();
+          bundleResolutionTransformRewriter.free();
         }
 
-        return outputHTML;
+        return bundleTransformedHTML;
       };
     },
 
