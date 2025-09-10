@@ -12,6 +12,7 @@ import { MoistureRequirementSection } from "#site-components/plant/MoistureRequi
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 import { css } from "#site-lib/css.js";
 import { bundle, bundleSrc, inlinedBundle } from "#site-lib/bundle.js";
+import { Head } from "#site-lib/components/Head.component.js";
 
 /**
  * @import { PlantData } from "./types/plantData.js"
@@ -34,8 +35,7 @@ export const config = {
   },
   permalink: (data) => data.dataEntry.permalink,
   dataEntries: await Promise.all(
-    // FIXME: Limit to first 4 for testing purposes only
-    dataEntryPaths.slice(0, 4).map(async (path) => {
+    dataEntryPaths.map(async (path) => {
       const fileContents = await readFile(path, "utf8");
 
       const dataEntryDirectory = path.slice(0, -"data.yml".length);
@@ -79,9 +79,9 @@ export const config = {
  */
 export default function Plant({ dataEntry }) {
   return html`<${Base}>
-    <head>
+    <${Head}>
       <link rel="stylesheet" href="${bundleSrc("plant")}" />
-    </head>
+    <//>
     <header>
       <h1>${dataEntry.common_names[0]}</h1>
       <p aria-description="Scientific name">${dataEntry.scientific_name}</p>

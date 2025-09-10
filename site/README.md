@@ -46,6 +46,35 @@ export default function IndexPage({ ...data }) {
 Component tags should either self-close or use a `<//>` closing tag.
 Any attributes set on a component tag will be passed as props to that component.
 
+## Head tags
+
+If you wish to add contents to the page's `<head>` tag, you may do so by using the `Head` component.
+Any tags nested inside the `Head` component will be hoisted onto the end of the page's `<head>` tag.
+The `<head>` tag's contents will also be de-duped, so duplicate `<link>` or `<script>` tags will be consolidated and `<title>` and `<meta>` tags will defer to the latest-occurring value, allowing you to override the title or description content for a page.
+
+```js
+import { html } from "#site-lib/html.js";
+
+import { Head } from "#site-lib/components/Head.component.js";
+import Base from "./_layouts/base.js";
+
+export default function IndexPage() {
+  return html`<${Base}>
+    <${Head}>
+      <title>Home</title>
+      <script src="/index-page.js"></script>
+    <//>
+    <main>
+      <h1>Home</h1>
+    </main>
+  <//>`;
+}
+```
+
+NOTE: the `Head` component works by rendering a `head--` tag which will be automatically processed
+in the compilation step. This means that `head--` is a reserved tag name, although I don't expect that
+to every collide with anything.
+
 ## Styling
 
 Styles can be attached to components using the `css` tagged template literal function.

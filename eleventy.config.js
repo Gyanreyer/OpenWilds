@@ -1,4 +1,4 @@
-import { parse as parseHTML, serialize as serializeHTML, html as parse5HTML } from 'parse5';
+import { parse as parseHTML, serialize as serializeHTML, html as parse5HTML, defaultTreeAdapter } from 'parse5';
 import { Features, transform as transformCSS, } from 'lightningcss';
 import { transform as transformJS } from 'esbuild';
 import {
@@ -19,21 +19,25 @@ import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex } from '#sit
  */
 
 /**
- * @template {Parse5Types.Node} T
- *
  * @param {Parse5Types.Node} node
- * @param {(node: Parse5Types.Node) => node is T} callback
- *
- * @returns {T | null}
+ * @returns {node is Parse5Types.Document}
  */
-const queryDocumentNode = (node, callback) => {
-  if (callback(node)) {
+const isDocumentNode = (node) => node.nodeName === "#document";
+
+/**
+ * @param {Parse5Types.Document | Parse5Types.Element} node
+ * @param {((elementNode: Parse5Types.Element) => boolean)} callback
+ *
+ * @returns {Parse5Types.Element | null}
+ */
+const queryElement = (node, callback) => {
+  if (!isDocumentNode(node) && callback(node)) {
     return node;
   }
 
-  if ("childNodes" in node) {
-    for (const childNode of node.childNodes) {
-      const result = queryDocumentNode(childNode, callback);
+  for (const childNode of node.childNodes) {
+    if (defaultTreeAdapter.isElementNode(childNode)) {
+      const result = queryElement(childNode, callback);
       if (result) {
         return result;
       }
@@ -41,29 +45,6 @@ const queryDocumentNode = (node, callback) => {
   }
 
   return null;
-}
-
-/**
- * @template {Parse5Types.Node} T[]
- *
- * @param {Parse5Types.Node} node
- * @param {(node: Parse5Types.Node) => node is T} callback
- * @param {T[]} [accumulator]
- *
- * @returns {T[]}
- */
-const queryAllDocumentNodes = (node, callback, accumulator = []) => {
-  if (callback(node)) {
-    accumulator.push(node);
-  }
-
-  if ("childNodes" in node) {
-    for (const childNode of node.childNodes) {
-      queryAllDocumentNodes(childNode, callback, accumulator);
-    }
-  }
-
-  return accumulator;
 }
 
 const TRANSFORM_ACTIONS =
@@ -95,23 +76,19 @@ const transformDocumentNodes = async (node, transformer) => {
     return result;
   }
 
-  if ("childNodes" in node) {
+  if (isDocumentNode(node) || defaultTreeAdapter.isElementNode(node)) {
     let childNodeCount = node.childNodes.length;
     for (let i = 0; i < childNodeCount; ++i) {
       const childNode = node.childNodes[i];
-      if (!childNode) {
-        console.error("Child node is null or undefined:", { node, i, childNodeCount });
-        continue;
-      }
       const childResult = await transformDocumentNodes(childNode, transformer);
       if (childResult === TRANSFORM_ACTIONS.REMOVE) {
         node.childNodes.splice(i, 1);
-        childNode.parentNode = undefined;
+        childNode.parentNode = null;
         --i;
         --childNodeCount;
       } else if (Array.isArray(childResult) && childResult[0] === TRANSFORM_ACTIONS.REPLACE) {
         node.childNodes.splice(i, 1, childResult[1]);
-        childNode.parentNode = undefined;
+        childNode.parentNode = null;
       }
     }
   }
@@ -205,23 +182,24 @@ export default function (eleventyConfig) {
           onParseError: (err) => {
             console.error(`Error parsing HTML on page ${data.page.url}:`, err);
           },
+          sourceCodeLocationInfo: false,
         });
 
         /**
-         * @type {Record<string, Omit<Parse5Types.ChildNode,"parentNode">>}>}
+         * @type {Record<string, Parse5Types.ChildNode>}>}
          */
-        const deduplicatedHeadNodes = {};
+        let deduplicatedHeadNodes = {};
 
-        transformDocumentNodes(parsedDocument, (node) => {
-          if (!("tagName" in node) || node.tagName !== "head") {
+        // Gather all <head> tag children and de-dupe them
+        await transformDocumentNodes(parsedDocument, (node) => {
+          if (!defaultTreeAdapter.isElementNode(node) || (node.tagName !== "head" && node.tagName !== "head--")) {
             return TRANSFORM_ACTIONS.CONTINUE;
           }
 
-          for (const {
-            parentNode,
-            ...childNode
-          } of node.childNodes) {
-            if (!("tagName" in childNode)) {
+          for (const childNode of node.childNodes) {
+            childNode.parentNode = null;
+
+            if (!defaultTreeAdapter.isElementNode(childNode)) {
               deduplicatedHeadNodes[randomUUID()] = childNode;
               continue;
             }
@@ -268,7 +246,7 @@ export default function (eleventyConfig) {
                 } else {
                   let scriptContent = "";
                   for (const scriptChildNode of childNode.childNodes) {
-                    if (scriptChildNode.nodeName === "#text" && "value" in scriptChildNode) {
+                    if (defaultTreeAdapter.isTextNode(scriptChildNode)) {
                       scriptContent += scriptChildNode.value;
                     }
                   }
@@ -280,7 +258,7 @@ export default function (eleventyConfig) {
               case "style": {
                 let styleContent = "";
                 for (const styleChildNode of childNode.childNodes) {
-                  if (styleChildNode.nodeName === "#text" && "value" in styleChildNode) {
+                  if (defaultTreeAdapter.isTextNode(styleChildNode)) {
                     styleContent += styleChildNode.value;
                   }
                 }
@@ -298,43 +276,27 @@ export default function (eleventyConfig) {
           return TRANSFORM_ACTIONS.REMOVE;
         });
 
-        const rootHTMLTag = queryDocumentNode(parsedDocument,
-          /**
-           * @returns {node is Parse5Types.Element & { tagName: "head"; nodeName: "head"; }}
-           */
-          (node) => "tagName" in node && node.tagName === "html"
+        const rootHTMLTag = queryElement(parsedDocument,
+          (node) => node.tagName === "html"
         );
-
-        if (Object.values(deduplicatedHeadNodes).length > 0) {
-          console.log("Deduplicated head nodes:", Object.keys(deduplicatedHeadNodes));
-          console.log("ROOT", rootHTMLTag);
-        }
 
         /**
          * @type {Parse5Types.ParentNode}
          */
-        const newHeadTag = {
-          nodeName: "head",
-          tagName: "head",
-          attrs: [],
-          namespaceURI: parse5HTML.NS.HTML,
-          parentNode: rootHTMLTag,
-          childNodes: [],
-          sourceCodeLocation: undefined,
-        };
+        const newHeadTag = defaultTreeAdapter.createElement("head", parse5HTML.NS.HTML, []);
+        for (const headNode of Object.values(deduplicatedHeadNodes)) {
+          defaultTreeAdapter.appendChild(newHeadTag, headNode);
+        }
+        rootHTMLTag.childNodes.unshift(newHeadTag);
+        newHeadTag.parentNode = rootHTMLTag;
 
-        newHeadTag.childNodes = Object.values(deduplicatedHeadNodes).map(
-          /**
-           * @returns {*}
-           */
-          (node) => ({
-            ...node,
-            parentNode: newHeadTag,
-          }));
+        // Clear head nodes object for garbage collection
+        deduplicatedHeadNodes = {};
 
-        transformDocumentNodes(parsedDocument,
+        // Transform and process all <link> tags which import CSS bundles
+        await transformDocumentNodes(parsedDocument,
           async (node) => {
-            if (!("tagName" in node) || node.tagName !== "link") {
+            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "link") {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
 
@@ -374,9 +336,10 @@ export default function (eleventyConfig) {
         );
 
         let styleTagIndex = -1;
-        transformDocumentNodes(parsedDocument,
+        // Transform and process all <style> tags with inlined CSS bundles
+        await transformDocumentNodes(parsedDocument,
           (node) => {
-            if (!("tagName" in node) || node.tagName !== "style") {
+            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "style") {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
 
@@ -394,7 +357,7 @@ export default function (eleventyConfig) {
 
             let styleTagText = "";
             for (const childNode of node.childNodes) {
-              if (childNode.nodeName === "#text" && "value" in childNode) {
+              if (defaultTreeAdapter.isTextNode(childNode)) {
                 styleTagText += childNode.value;
               }
             }
@@ -443,19 +406,18 @@ export default function (eleventyConfig) {
               return TRANSFORM_ACTIONS.REMOVE;
             }
 
-            node.childNodes = [{
-              nodeName: "#text",
-              value: styleTagText,
-              parentNode: node,
-            }];
+            node.childNodes = [];
+            defaultTreeAdapter.insertText(node, styleTagText);
+
             return TRANSFORM_ACTIONS.CONTINUE;
           },
         );
 
         let scriptTagIndex = 0;
-        transformDocumentNodes(parsedDocument,
+        // Transform and process all <script> tags which either import a JS bundle or have inlined JS bundle contents
+        await transformDocumentNodes(parsedDocument,
           async (node) => {
-            if (!("tagName" in node) || node.tagName !== "script") {
+            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "script") {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
 
@@ -493,7 +455,7 @@ export default function (eleventyConfig) {
 
             let scriptTagText = "";
             for (const childNode of node.childNodes) {
-              if (childNode.nodeName === "#text" && "value" in childNode) {
+              if (defaultTreeAdapter.isTextNode(childNode)) {
                 scriptTagText += childNode.value;
               }
             }
@@ -541,11 +503,9 @@ export default function (eleventyConfig) {
               return TRANSFORM_ACTIONS.REMOVE;
             }
 
-            node.childNodes = [{
-              nodeName: "#text",
-              value: scriptTagText,
-              parentNode: node,
-            }];
+            node.childNodes = [];
+            defaultTreeAdapter.insertText(node, scriptTagText);
+
             return TRANSFORM_ACTIONS.CONTINUE;
           },
         );
@@ -621,7 +581,7 @@ export default function (eleventyConfig) {
          * @type {string}
          */
         let code;
-        /*n*
+        /**
          * @type {string}
          */
         let sourceMap;
