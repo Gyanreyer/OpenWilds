@@ -78,8 +78,8 @@ to every collide with anything.
 ## Styling
 
 Styles can be attached to components using the `css` tagged template literal function.
-When a component is rendered, we will gather the attached styles, bundle them into CSS files, and automatically add appropriate `<link rel="stylesheet">` tags
-to the page to load them.
+When a component is rendered, we will gather the attached styles into bundles which can be included
+on pages via `link` or `style` tags. See [using bundles](#using-bundles) below for details.
 
 ```js
 import { css } from '#site-lib/css.js';
@@ -198,7 +198,8 @@ MyScopedFunction.css = css`
 
 Simple client-side JavaScript can be bundled with components in a very similar way to CSS; you can attach scripts to a component
 by setting `Component.js` and using the `js` tagged template literal function.
-All bundles used on a page will be rolled up and automatically added to the `<head>` as `<script type="module" async>` tags.
+All bundles used on a page can be rolled into external bundle files or inlined into `<script>` tags.
+See [using bundles](#using-bundles) below for details.
 
 ```js
 import { js } from "#site-lib/js.js";
@@ -210,7 +211,9 @@ SayHello.js = js`
 `;
 ```
 
-The bundled scripts for each component will be wrapped in block scopes to avoid naming collisions, which means you cannot use top-level import declarations (ie, `import X from "/js/hello.js";`). However, you may use dynamic imports, such as `const X = await import("/js/hello.js");`.
+The bundled scripts for each component will be wrapped in block scopes to avoid naming collisions.
+If you are using ESM, this means you cannot use top-level import declarations (ie, `import X from "/js/hello.js";`).
+However, you may use dynamic imports, such as `const X = await import("/js/hello.js");`.
 
 ```js
 /** /public/js/hello.js */
@@ -220,4 +223,95 @@ console.log("Hello there!");
 SayHello.js = js`
   const logHello = import("/js/hello.js");
 `;
+```
+
+## Using bundles
+
+CSS/JS bundles will only be loaded on the page if you explicitly add a `<script>` or `<link>` tag to load them.
+
+### `bundleSrc`
+
+If you wish for the bundle contents to be placed into an external bundle file, you can include
+the bundle using `bundleSrc` with a `<link>` or `<script>` tag.
+
+```js
+import { bundleSrc } from "#site-lib/bundle.js";
+
+export function Layout() {
+  return `
+    <html>
+      <head>
+        <script src="${bundleSrc("default")}"></script>
+        <link rel="stylesheet" href="${bundleSrc("default")}" />
+      </head>
+    </html>
+  `;
+}
+```
+
+#### Wildcard bundle includes
+
+You may automatically include all bundles used on the page which were not explicitly included
+by name using a `"*"` wildcard include.
+
+When you attach a wildcard include to a `<script>` or `<link>` tag, that tag will be duplicated for each source that it uses.
+
+```js
+import { bundleSrc } from "#site-lib/bundle.js";
+
+export function Layout() {
+return `
+    <html>
+      <head>
+        <script src="${bundleSrc("*")}" type="module"></script>
+        <link rel="stylesheet" href="${bundleSrc("*")}" />
+      </head>
+      <body>
+        <script src="${bundleSrc("deferred")}" type="module"></script>
+      </body>
+    </html>
+  `;
+}
+```
+
+Resulting HTML for a page which has `"default"` and `"plant"` CSS and JS bundles, and a `"deferred"` JS bundle:
+
+```html
+<html>
+  <head>
+    <script src="/js/default.js" type="module"></script>
+    <script src="/js/plant.js" type="module"></script>
+    <link rel="stylesheet" href="/css/default.css" />
+    <link rel="stylesheet" href="/css/plant.css" />
+  </head>
+  <body>
+    <script src="/js/deferred.js" type="module"></script>
+  </body>
+</html>
+```
+
+### Inlining bundle contents
+
+Bundle contents can also be inlined in `<style>` and `<script>` tags using `inlinedBundle`.
+Note that this does not support wildcard includes.
+
+```js
+import { inlinedBundle } from "#site-lib/bundle.js";
+
+export function Layout() {
+return `
+    <html>
+      <head>
+        <style>
+          ${inlinedBundle("critical")}
+        </style>
+      </head>
+      <body>
+        <script type="module">
+          ${inlinedBundle("default")}
+        </script>
+      </body>
+    </html>
+  `;
+}
 ```

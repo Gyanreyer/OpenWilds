@@ -2,7 +2,6 @@ import { html } from '#site-lib/html.js';
 import { css } from '#site-lib/css.js';
 import { getScopedComponentID } from '#site-lib/scid.js';
 import { bundle } from '#site-lib/bundle.js';
-import { js } from '#site-lib/js.js';
 
 const scid = getScopedComponentID();
 
@@ -67,9 +66,4 @@ PlantDataRangeMeter.css = css`
       filter: saturate(0.25) brightness(0.75);
     }
   }
-`;
-
-PlantDataRangeMeter.js = js`
-  ${bundle("plant")}
-  console.log("PlantDataRangeMeter loaded");
 `;

@@ -11,7 +11,7 @@ import {
   resolve,
 } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex } from '#site-lib/bundle.js';
+import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex, WILDCARD_BUNDLE_NAME } from '#site-lib/bundle.js';
 
 /**
  * @import { UserConfig } from '@11ty/eleventy';
@@ -111,6 +111,8 @@ const getCSSBundleHref = (bundleName) => `/css/${bundleName}.css`;
  * @param {string} bundleName
  */
 const getJSBundleSrc = (bundleName) => `/js/${bundleName}.js`;
+
+const lazyPreloadOnloadRegex = /\bthis\.rel\s*=\s*['"`]stylesheet['"`]/;
 
 /**
  *
@@ -313,12 +315,18 @@ export default function (eleventyConfig) {
 
             const relAttr = node.attrs.find((attr) => attr.name === "rel") ?? null;
 
+            let isPreloadLink = false;
+            let isLazyImportPreloadLink = false;
+
             if (relAttr.value === "preload") {
+              isPreloadLink = true;
               // Stylesheets maybe be imported via preload links, but only if they have `as="style"`
               const asAttr = node.attrs.find((attr) => attr.name === "as") ?? null;
               if (asAttr.value !== "style") {
                 return TRANSFORM_ACTIONS.CONTINUE;
               }
+              const onloadAttr = node.attrs.find((attr) => attr.name === "onload") ?? null;
+              isLazyImportPreloadLink = Boolean(onloadAttr) && lazyPreloadOnloadRegex.test(onloadAttr.value);
             } else if (relAttr.value !== "stylesheet") {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
@@ -330,6 +338,11 @@ export default function (eleventyConfig) {
             }
 
             const globalImportBundleName = hrefAttr.value.slice(bundleSrcPrefixLength);
+            if (!isPreloadLink || isLazyImportPreloadLink) {
+              // Don't consider the bundle as "used" yet if we're dealing with a `preload` link
+              // which doesn't actually lazily import the stylesheet with an `onload` handler.
+              unimportedCSSBundleNameSet.delete(globalImportBundleName);
+            }
             const cssContent = renderedCSSBundles[globalImportBundleName] ? Array.from(renderedCSSBundles[globalImportBundleName]).join("") : null;
             if (!cssContent) {
               console.error(`CSS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing link tag.`);
@@ -382,6 +395,7 @@ export default function (eleventyConfig) {
             styleTagText = styleTagText.replaceAll(
               inlinedBundleRegex,
               (match, bundleName) => {
+                unimportedCSSBundleNameSet.delete(bundleName);
                 const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
                 if (cssContent === null) {
                   console.error(`No CSS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
@@ -437,7 +451,7 @@ export default function (eleventyConfig) {
             const srcAttr = node.attrs.find((attr) => attr.name === "src") ?? null;
             if (srcAttr) {
               // Skip wild card imports here; they are handled in a second pass below
-              if (srcAttr.value.startsWith(bundleSrcPrefix) && srcAttr.value !== `${bundleSrcPrefix}*`) {
+              if (srcAttr.value.startsWith(bundleSrcPrefix) && srcAttr.value !== `${bundleSrcPrefix}${WILDCARD_BUNDLE_NAME}`) {
                 const globalImportBundleName = srcAttr.value.slice(bundleSrcPrefixLength);
                 unimportedJSBundleNameSet.delete(globalImportBundleName);
                 const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
@@ -528,61 +542,122 @@ export default function (eleventyConfig) {
         // which were used on this page but haven't been inserted into other script tags yet.
         await transformDocumentNodes(parsedDocument,
           async (node) => {
-            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "script") {
+            if (!defaultTreeAdapter.isElementNode(node)) {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
 
-            const srcAttrIndex = node.attrs.findIndex((attr) => attr.name === "src");
-            if (srcAttrIndex === -1) {
-              return TRANSFORM_ACTIONS.CONTINUE;
-            }
-
-            const srcAttr = node.attrs[srcAttrIndex];
-            if (srcAttr.value !== `${bundleSrcPrefix}*`) {
-              return TRANSFORM_ACTIONS.CONTINUE;
-            }
-
-            const wildCardScriptNodes = [];
-
-            const bundleNames = Array.from(unimportedJSBundleNameSet);
-            unimportedCSSBundleNameSet.clear();
-
-            for (const globalImportBundleName of bundleNames) {
-              const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
-              if (!jsContent) {
-                console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
-                continue;
+            if (node.tagName === "script") {
+              const srcAttrIndex = node.attrs.findIndex((attr) => attr.name === "src");
+              if (srcAttrIndex === -1) {
+                return TRANSFORM_ACTIONS.CONTINUE;
               }
-              globalJsBundles[globalImportBundleName] ??= new Set();
-              globalJsBundles[globalImportBundleName].add(jsContent);
 
-              /**
-               * @type {Parse5Types.Element}
-               */
-              const newNode = {
-                ...node,
-                attrs: [
-                  ...node.attrs.slice(0, srcAttrIndex),
-                  {
-                    name: "src",
-                    value: getJSBundleSrc(globalImportBundleName),
-                  },
-                  ...node.attrs.slice(srcAttrIndex + 1),
-                ],
-                parentNode: null,
-              };
+              const srcAttr = node.attrs[srcAttrIndex];
+              if (srcAttr.value !== `${bundleSrcPrefix}${WILDCARD_BUNDLE_NAME}`) {
+                return TRANSFORM_ACTIONS.CONTINUE;
+              }
 
-              wildCardScriptNodes.push(newNode);
+              const wildCardScriptNodes = [];
+
+              const bundleNames = Array.from(unimportedJSBundleNameSet);
+              unimportedCSSBundleNameSet.clear();
+
+              for (const globalImportBundleName of bundleNames) {
+                const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
+                if (!jsContent) {
+                  console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
+                  continue;
+                }
+                globalJsBundles[globalImportBundleName] ??= new Set();
+                globalJsBundles[globalImportBundleName].add(jsContent);
+
+                /**
+                 * @type {Parse5Types.Element}
+                 */
+                const newNode = {
+                  ...node,
+                  attrs: [
+                    ...node.attrs.slice(0, srcAttrIndex),
+                    {
+                      name: "src",
+                      value: getJSBundleSrc(globalImportBundleName),
+                    },
+                    ...node.attrs.slice(srcAttrIndex + 1),
+                  ],
+                  parentNode: null,
+                };
+
+                wildCardScriptNodes.push(newNode);
+              }
+
+              return [TRANSFORM_ACTIONS.REPLACE, ...wildCardScriptNodes];
+            } else if (node.tagName === "link") {
+              const relAttr = node.attrs.find((attr) => attr.name === "rel") ?? null;
+              if (relAttr.value !== "stylesheet" && relAttr.value !== "preload") {
+                return TRANSFORM_ACTIONS.CONTINUE;
+              }
+
+              if (relAttr.value === "preload") {
+                const asAttr = node.attrs.find((attr) => attr.name === "as") ?? null;
+                if (asAttr.value !== "style") {
+                  return TRANSFORM_ACTIONS.CONTINUE;
+                }
+              }
+
+              const hrefAttrIndex = node.attrs.findIndex((attr) => attr.name === "href");
+              if (hrefAttrIndex === -1) {
+                return TRANSFORM_ACTIONS.CONTINUE;
+              }
+
+              const hrefAttr = node.attrs[hrefAttrIndex];
+              if (hrefAttr.value !== `${bundleSrcPrefix}${WILDCARD_BUNDLE_NAME}`) {
+                return TRANSFORM_ACTIONS.CONTINUE;
+              }
+
+              const wildCardLinkNodes = [];
+
+              const bundleNames = Array.from(unimportedCSSBundleNameSet);
+              unimportedCSSBundleNameSet.clear();
+
+              for (const globalImportBundleName of bundleNames) {
+                const cssContent = renderedCSSBundles[globalImportBundleName] ? Array.from(renderedCSSBundles[globalImportBundleName]).join("") : null;
+                if (!cssContent) {
+                  console.error(`CSS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing link tag.`);
+                  continue;
+                }
+
+                globalCssBundles[globalImportBundleName] ??= new Set();
+                globalCssBundles[globalImportBundleName].add(cssContent);
+
+                /**
+                 * @type {Parse5Types.Element}
+                 */
+                const newNode = {
+                  ...node,
+                  attrs: [
+                    ...node.attrs.slice(0, hrefAttrIndex),
+                    {
+                      name: "href",
+                      value: getCSSBundleHref(globalImportBundleName),
+                    },
+                    ...node.attrs.slice(hrefAttrIndex + 1),
+                  ],
+                  parentNode: null,
+                };
+
+                wildCardLinkNodes.push(newNode);
+              }
+
+              return [TRANSFORM_ACTIONS.REPLACE, ...wildCardLinkNodes];
             }
 
-            return [TRANSFORM_ACTIONS.REPLACE, ...wildCardScriptNodes];
+            return TRANSFORM_ACTIONS.CONTINUE;
           },
         );
 
         return serializeHTML(parsedDocument);
       };
     },
-
   });
 
   eleventyConfig.on("eleventy.before", async ({
