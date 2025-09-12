@@ -60,7 +60,7 @@ const TRANSFORM_ACTIONS =
  *  | typeof TRANSFORM_ACTIONS.REMOVE
  *  | typeof TRANSFORM_ACTIONS.CONTINUE
  *  | typeof TRANSFORM_ACTIONS.SKIP_CHILDREN
- *  | [typeof TRANSFORM_ACTIONS.REPLACE, Parse5Types.ChildNode]
+ *  | [typeof TRANSFORM_ACTIONS.REPLACE, ...Parse5Types.ChildNode[]]
  * } TransformResult
  */
 
@@ -87,7 +87,14 @@ const transformDocumentNodes = async (node, transformer) => {
         --i;
         --childNodeCount;
       } else if (Array.isArray(childResult) && childResult[0] === TRANSFORM_ACTIONS.REPLACE) {
-        node.childNodes.splice(i, 1, childResult[1]);
+        const [, ...newChildNodes] = childResult;
+        node.childNodes.splice(i, 1, ...newChildNodes);
+        for (const newChildNode of newChildNodes) {
+          newChildNode.parentNode = node;
+        }
+        i += newChildNodes.length - 1;
+        childNodeCount += newChildNodes.length - 1;
+        // Disconnect the replaced node from the tree
         childNode.parentNode = null;
       }
     }
@@ -177,6 +184,10 @@ export default function (eleventyConfig) {
           cssBundles: renderedCSSBundles,
           jsBundles: renderedJSBundles,
         } = render(data);
+
+        // Set of JS bundles which were used on this page but haven't been inserted into script tags yet
+        const unimportedJSBundleNameSet = new Set(Object.keys(renderedJSBundles));
+        const unimportedCSSBundleNameSet = new Set(Object.keys(renderedCSSBundles));
 
         const parsedDocument = parseHTML(`<!DOCTYPE html>${html}`, {
           onParseError: (err) => {
@@ -425,8 +436,10 @@ export default function (eleventyConfig) {
 
             const srcAttr = node.attrs.find((attr) => attr.name === "src") ?? null;
             if (srcAttr) {
-              if (srcAttr.value.startsWith(bundleSrcPrefix)) {
+              // Skip wild card imports here; they are handled in a second pass below
+              if (srcAttr.value.startsWith(bundleSrcPrefix) && srcAttr.value !== `${bundleSrcPrefix}*`) {
                 const globalImportBundleName = srcAttr.value.slice(bundleSrcPrefixLength);
+                unimportedJSBundleNameSet.delete(globalImportBundleName);
                 const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
                 if (!jsContent) {
                   console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
@@ -469,6 +482,7 @@ export default function (eleventyConfig) {
             scriptTagText = scriptTagText.replaceAll(
               inlinedBundleRegex,
               (match, bundleName) => {
+                unimportedJSBundleNameSet.delete(bundleName);
                 const jsContent = renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("") : null;
                 if (jsContent === null) {
                   console.error(`No JS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
@@ -507,6 +521,61 @@ export default function (eleventyConfig) {
             defaultTreeAdapter.insertText(node, scriptTagText);
 
             return TRANSFORM_ACTIONS.CONTINUE;
+          },
+        );
+
+        // Second pass to handle "rest" bundle imports where we should insert all remaining bundles
+        // which were used on this page but haven't been inserted into other script tags yet.
+        await transformDocumentNodes(parsedDocument,
+          async (node) => {
+            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "script") {
+              return TRANSFORM_ACTIONS.CONTINUE;
+            }
+
+            const srcAttrIndex = node.attrs.findIndex((attr) => attr.name === "src");
+            if (srcAttrIndex === -1) {
+              return TRANSFORM_ACTIONS.CONTINUE;
+            }
+
+            const srcAttr = node.attrs[srcAttrIndex];
+            if (srcAttr.value !== `${bundleSrcPrefix}*`) {
+              return TRANSFORM_ACTIONS.CONTINUE;
+            }
+
+            const wildCardScriptNodes = [];
+
+            const bundleNames = Array.from(unimportedJSBundleNameSet);
+            unimportedCSSBundleNameSet.clear();
+
+            for (const globalImportBundleName of bundleNames) {
+              const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
+              if (!jsContent) {
+                console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
+                continue;
+              }
+              globalJsBundles[globalImportBundleName] ??= new Set();
+              globalJsBundles[globalImportBundleName].add(jsContent);
+
+              /**
+               * @type {Parse5Types.Element}
+               */
+              const newNode = {
+                ...node,
+                attrs: [
+                  ...node.attrs.slice(0, srcAttrIndex),
+                  {
+                    name: "src",
+                    value: getJSBundleSrc(globalImportBundleName),
+                  },
+                  ...node.attrs.slice(srcAttrIndex + 1),
+                ],
+                parentNode: null,
+              };
+
+              wildCardScriptNodes.push(newNode);
+            }
+
+            return [TRANSFORM_ACTIONS.REPLACE, ...wildCardScriptNodes];
           },
         );
 
