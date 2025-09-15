@@ -11,7 +11,7 @@ import { LightRequirementSection } from "#site-components/plant/LightRequirement
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 import { css } from "#site-lib/css.js";
-import { bundle, bundleSrc, inlinedBundle } from "#site-lib/bundle.js";
+import { bundle } from "#site-lib/bundle.js";
 import { Head } from "#site-lib/components/Head.component.js";
 
 /**
@@ -80,7 +80,7 @@ export const config = {
 export default function Plant({ dataEntry }) {
   return html`<${Base}>
     <${Head}>
-      <link rel="stylesheet" href="${bundleSrc("plant")}" />
+      <link rel="stylesheet" href="${bundle.src("plant")}" />
     <//>
     <header>
       <h1>${dataEntry.common_names[0]}</h1>
@@ -124,7 +124,7 @@ export default function Plant({ dataEntry }) {
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
     <script type="module" async>
-      ${inlinedBundle("plant")}
+      ${bundle.inline("plant")}
     </script>
   <//>`;
 }

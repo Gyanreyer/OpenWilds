@@ -1,4 +1,4 @@
-import { bundleSrc } from "#site-lib/bundle.js";
+import { bundle } from "#site-lib/bundle.js";
 import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
 
@@ -19,8 +19,8 @@ export default function BaseLayout({ title = "OpenWilds", description = "OpenWil
 
       <meta name="generator" content="Eleventy v3.1.2" />
       <meta property="og:type" content="website" />
-      <script src="${bundleSrc("*")}" type="module" async></script>
-      <link rel="preload" href="${bundleSrc("*")}" as="style" onload="this.rel='stylesheet'" />
+      <script src="${bundle.src("*")}" type="module" async></script>
+      <link rel="preload" href="${bundle.src("*")}" as="style" onload="this.rel='stylesheet'" />
     </head>
     <body>
       ${children}

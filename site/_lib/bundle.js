@@ -123,17 +123,19 @@ export const bundleSrcPrefixLength = bundleSrcPrefix.length;
 /**
  * @param {string} bundleName
  */
-export const bundleSrc = (bundleName) => `${bundleSrcPrefix}${bundleName}`;
+bundle.src = (bundleName) => `${bundleSrcPrefix}${bundleName}`;
 
 /**
  * @param {string} bundleName
  */
-export const inlinedBundle = (bundleName) => {
+bundle.inline = (bundleName) => {
   if (bundleName === WILDCARD_BUNDLE_NAME) {
-    throw new Error(`inlinedBundle() does not support wildcard bundling. Use bundleSrc("${WILDCARD_BUNDLE_NAME}") instead.`);
+    throw new Error(`inlinedBundle() does not support wildcard bundling. Use bundle.src("${WILDCARD_BUNDLE_NAME}") instead.`);
   }
 
   return `/*@--BUNDLE--${bundleName}--@*/`;
 }
 
 export const inlinedBundleRegex = /\/\*@--BUNDLE--(.*?)--@\*\//g;
+
+export const inlinedWildcardBundle = "/*@--BUNDLE--*--@*/";

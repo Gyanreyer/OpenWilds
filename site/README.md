@@ -229,20 +229,20 @@ SayHello.js = js`
 
 CSS/JS bundles will only be loaded on the page if you explicitly add a `<script>` or `<link>` tag to load them.
 
-### `bundleSrc`
+### `bundle.src`
 
 If you wish for the bundle contents to be placed into an external bundle file, you can include
-the bundle using `bundleSrc` with a `<link>` or `<script>` tag.
+the bundle using `bundle.src()` with a `<link>` or `<script>` tag.
 
 ```js
-import { bundleSrc } from "#site-lib/bundle.js";
+import { bundle } from "#site-lib/bundle.js";
 
 export function Layout() {
   return `
     <html>
       <head>
-        <script src="${bundleSrc("default")}"></script>
-        <link rel="stylesheet" href="${bundleSrc("default")}" />
+        <script src="${bundle.src("default")}"></script>
+        <link rel="stylesheet" href="${bundle.src("default")}" />
       </head>
     </html>
   `;
@@ -257,17 +257,17 @@ by name using a `"*"` wildcard include.
 When you attach a wildcard include to a `<script>` or `<link>` tag, that tag will be duplicated for each source that it uses.
 
 ```js
-import { bundleSrc } from "#site-lib/bundle.js";
+import { bundle } from "#site-lib/bundle.js";
 
 export function Layout() {
 return `
     <html>
       <head>
-        <script src="${bundleSrc("*")}" type="module"></script>
-        <link rel="stylesheet" href="${bundleSrc("*")}" />
+        <script src="${bundle.src("*")}" type="module"></script>
+        <link rel="stylesheet" href="${bundle.src("*")}" />
       </head>
       <body>
-        <script src="${bundleSrc("deferred")}" type="module"></script>
+        <script src="${bundle.src("deferred")}" type="module"></script>
       </body>
     </html>
   `;
@@ -292,23 +292,23 @@ Resulting HTML for a page which has `"default"` and `"plant"` CSS and JS bundles
 
 ### Inlining bundle contents
 
-Bundle contents can also be inlined in `<style>` and `<script>` tags using `inlinedBundle`.
+Bundle contents can also be inlined in `<style>` and `<script>` tags using `bundle.inline()`.
 Note that this does not support wildcard includes.
 
 ```js
-import { inlinedBundle } from "#site-lib/bundle.js";
+import { bundle } from "#site-lib/bundle.js";
 
 export function Layout() {
 return `
     <html>
       <head>
         <style>
-          ${inlinedBundle("critical")}
+          ${bundle.inline("critical")}
         </style>
       </head>
       <body>
         <script type="module">
-          ${inlinedBundle("default")}
+          ${bundle.inline("default")}
         </script>
       </body>
     </html>

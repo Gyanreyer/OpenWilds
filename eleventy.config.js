@@ -11,7 +11,7 @@ import {
   resolve,
 } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex, WILDCARD_BUNDLE_NAME } from '#site-lib/bundle.js';
+import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex, inlinedWildcardBundle as inlinedWildCardBundle, WILDCARD_BUNDLE_NAME } from '#site-lib/bundle.js';
 
 /**
  * @import { UserConfig } from '@11ty/eleventy';
@@ -56,12 +56,7 @@ const TRANSFORM_ACTIONS =
   });
 
 /**
- * @typedef {
- *  | typeof TRANSFORM_ACTIONS.REMOVE
- *  | typeof TRANSFORM_ACTIONS.CONTINUE
- *  | typeof TRANSFORM_ACTIONS.SKIP_CHILDREN
- *  | [typeof TRANSFORM_ACTIONS.REPLACE, ...Parse5Types.ChildNode[]]
- * } TransformResult
+ * @typedef {(typeof TRANSFORM_ACTIONS)["REMOVE"] | (typeof TRANSFORM_ACTIONS)["CONTINUE"] | (typeof TRANSFORM_ACTIONS)["SKIP_CHILDREN"] | [(typeof TRANSFORM_ACTIONS)["REPLACE"], ...Parse5Types.ChildNode[]]} TransformResult
  */
 
 /**
@@ -306,153 +301,175 @@ export default function (eleventyConfig) {
         // Clear head nodes object for garbage collection
         deduplicatedHeadNodes = {};
 
-        // Transform and process all <link> tags which import CSS bundles
-        await transformDocumentNodes(parsedDocument,
-          async (node) => {
-            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "link") {
+        /**
+         * @type {Set<Parse5Types.Element>}
+         */
+        const wildCardCSSLinkNodes = new Set();
+
+
+        /**
+         * @param {Parse5Types.Element} node
+         * @returns {TransformResult}
+         */
+        const handleLinkNode = (node) => {
+          const relAttr = node.attrs.find((attr) => attr.name === "rel") ?? null;
+
+          let isPreloadLink = false;
+          let isLazyImportPreloadLink = false;
+
+          if (relAttr.value === "preload") {
+            isPreloadLink = true;
+            // Stylesheets maybe be imported via preload links, but only if they have `as="style"`
+            const asAttr = node.attrs.find((attr) => attr.name === "as") ?? null;
+            if (asAttr.value !== "style") {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
-
-            const relAttr = node.attrs.find((attr) => attr.name === "rel") ?? null;
-
-            let isPreloadLink = false;
-            let isLazyImportPreloadLink = false;
-
-            if (relAttr.value === "preload") {
-              isPreloadLink = true;
-              // Stylesheets maybe be imported via preload links, but only if they have `as="style"`
-              const asAttr = node.attrs.find((attr) => attr.name === "as") ?? null;
-              if (asAttr.value !== "style") {
-                return TRANSFORM_ACTIONS.CONTINUE;
-              }
-              const onloadAttr = node.attrs.find((attr) => attr.name === "onload") ?? null;
-              isLazyImportPreloadLink = Boolean(onloadAttr) && lazyPreloadOnloadRegex.test(onloadAttr.value);
-            } else if (relAttr.value !== "stylesheet") {
-              return TRANSFORM_ACTIONS.CONTINUE;
-            }
-
-            const hrefAttr = node.attrs.find((attr) => attr.name === "href") ?? null;
-
-            if (!hrefAttr || !hrefAttr.value.startsWith(bundleSrcPrefix)) {
-              return TRANSFORM_ACTIONS.CONTINUE;
-            }
-
-            const globalImportBundleName = hrefAttr.value.slice(bundleSrcPrefixLength);
-            if (!isPreloadLink || isLazyImportPreloadLink) {
-              // Don't consider the bundle as "used" yet if we're dealing with a `preload` link
-              // which doesn't actually lazily import the stylesheet with an `onload` handler.
-              unimportedCSSBundleNameSet.delete(globalImportBundleName);
-            }
-            const cssContent = renderedCSSBundles[globalImportBundleName] ? Array.from(renderedCSSBundles[globalImportBundleName]).join("") : null;
-            if (!cssContent) {
-              console.error(`CSS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing link tag.`);
-              // Remove the link if the bundle is not used on this page
-              return TRANSFORM_ACTIONS.REMOVE;
-            }
-
-            globalCssBundles[globalImportBundleName] ??= new Set();
-            globalCssBundles[globalImportBundleName].add(cssContent);
-
-            hrefAttr.value = getCSSBundleHref(globalImportBundleName);
-
+            const onloadAttr = node.attrs.find((attr) => attr.name === "onload") ?? null;
+            isLazyImportPreloadLink = Boolean(onloadAttr) && lazyPreloadOnloadRegex.test(onloadAttr.value);
+          } else if (relAttr.value !== "stylesheet") {
             return TRANSFORM_ACTIONS.CONTINUE;
-          },
-        );
+          }
 
-        let styleTagIndex = -1;
-        // Transform and process all <style> tags with inlined CSS bundles
-        await transformDocumentNodes(parsedDocument,
-          (node) => {
-            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "style") {
-              return TRANSFORM_ACTIONS.CONTINUE;
-            }
+          const hrefAttr = node.attrs.find((attr) => attr.name === "href") ?? null;
 
-            styleTagIndex += 1;
-
-            let shouldSkipProcessingContents = false;
-            node.attrs = node.attrs.filter((attr) => {
-              if (attr.name === "data-skip-inline-processing") {
-                shouldSkipProcessingContents = (attr.value ?? "false") !== "false";
-                // Remove this attribute after processing it
-                return false;
-              }
-              return true;
-            });
-
-            let styleTagText = "";
-            for (const childNode of node.childNodes) {
-              if (defaultTreeAdapter.isTextNode(childNode)) {
-                styleTagText += childNode.value;
-              }
-            }
-
-            styleTagText = styleTagText.trim();
-            if (styleTagText.length === 0) {
-              console.warn(`Empty <style> tag found on page ${data.page.url}. Removing.`);
-              return TRANSFORM_ACTIONS.REMOVE;
-            }
-
-            styleTagText = styleTagText.replaceAll(
-              inlinedBundleRegex,
-              (match, bundleName) => {
-                unimportedCSSBundleNameSet.delete(bundleName);
-                const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
-                if (cssContent === null) {
-                  console.error(`No CSS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
-                  return "";
-                }
-
-                return cssContent;
-              }
-            );
-
-            const styleTagContentHash = createHash("md5").update(styleTagText).digest("hex");
-
-            if (!shouldSkipProcessingContents) {
-              try {
-                if (processedInlineBundleCache[styleTagContentHash] !== undefined) {
-                  styleTagText = processedInlineBundleCache[styleTagContentHash];
-                } else {
-                  const { code } = transformCSS({
-                    filename: `${encodeURIComponent(data.page.url)}__<style>(${styleTagIndex}).css`,
-                    code: encoder.encode(styleTagText),
-                    minify: true,
-                    include: Features.Nesting,
-                  });
-                  styleTagText = processedInlineBundleCache[styleTagContentHash] = decoder.decode(code);
-                }
-              } catch (err) {
-                console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
-              }
-            }
-
-            if (styleTagText.length === 0) {
-              console.warn(`Empty <style> tag found on page ${data.page.url} after processing. Removing.`);
-              return TRANSFORM_ACTIONS.REMOVE;
-            }
-
-            node.childNodes = [];
-            defaultTreeAdapter.insertText(node, styleTagText);
-
+          if (!hrefAttr || !hrefAttr.value.startsWith(bundleSrcPrefix)) {
             return TRANSFORM_ACTIONS.CONTINUE;
-          },
-        );
+          }
 
-        let scriptTagIndex = 0;
-        // Transform and process all <script> tags which either import a JS bundle or have inlined JS bundle contents
-        await transformDocumentNodes(parsedDocument,
-          async (node) => {
-            if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "script") {
-              return TRANSFORM_ACTIONS.CONTINUE;
+          const globalImportBundleName = hrefAttr.value.slice(bundleSrcPrefixLength);
+
+          if (globalImportBundleName === WILDCARD_BUNDLE_NAME) {
+            // If this is a wildcard import, we need to handle it later after we've processed all other nodes
+            wildCardCSSLinkNodes.add(node);
+            return TRANSFORM_ACTIONS.CONTINUE;
+          }
+
+          if (!isPreloadLink || isLazyImportPreloadLink) {
+            // Don't consider the bundle as "used" yet if we're dealing with a `preload` link
+            // which doesn't actually lazily import the stylesheet with an `onload` handler.
+            unimportedCSSBundleNameSet.delete(globalImportBundleName);
+          }
+          const cssContent = renderedCSSBundles[globalImportBundleName] ? Array.from(renderedCSSBundles[globalImportBundleName]).join("") : null;
+          if (!cssContent) {
+            console.error(`CSS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing link tag.`);
+            // Remove the link if the bundle is not used on this page
+            return TRANSFORM_ACTIONS.REMOVE;
+          }
+
+          globalCssBundles[globalImportBundleName] ??= new Set();
+          globalCssBundles[globalImportBundleName].add(cssContent);
+
+          hrefAttr.value = getCSSBundleHref(globalImportBundleName);
+
+          return TRANSFORM_ACTIONS.CONTINUE;
+        };
+
+        /**
+         * @type {Set<Parse5Types.Element>}
+         */
+        const wildCardInlinedCSSStyleNodes = new Set();
+
+        /**
+         * <style> tags which we need to return to to process their contents once
+         * all bundles are resolved
+         *
+         * @type {Set<Parse5Types.Element>}
+         */
+        const styleNodesToProcess = new Set();
+
+        /**
+         * @param {Parse5Types.Element} node
+         * @returns {TransformResult}
+         */
+        const handleStyleNode = (node) => {
+          let shouldSkipProcessingContents = false;
+          node.attrs = node.attrs.filter((attr) => {
+            if (attr.name === "data-skip-inline-processing") {
+              shouldSkipProcessingContents = (attr.value ?? "false") !== "false";
+              // Remove this attribute after processing it
+              return false;
             }
+            return true;
+          });
 
-            scriptTagIndex += 1;
+          let styleTagText = "";
+          for (const childNode of node.childNodes) {
+            if (defaultTreeAdapter.isTextNode(childNode)) {
+              styleTagText += childNode.value;
+            }
+          }
 
-            const srcAttr = node.attrs.find((attr) => attr.name === "src") ?? null;
-            if (srcAttr) {
-              // Skip wild card imports here; they are handled in a second pass below
-              if (srcAttr.value.startsWith(bundleSrcPrefix) && srcAttr.value !== `${bundleSrcPrefix}${WILDCARD_BUNDLE_NAME}`) {
-                const globalImportBundleName = srcAttr.value.slice(bundleSrcPrefixLength);
+          styleTagText = styleTagText.trim();
+          if (styleTagText.length === 0) {
+            console.warn(`Empty <style> tag found on page ${data.page.url}. Removing.`);
+            return TRANSFORM_ACTIONS.REMOVE;
+          }
+
+          styleTagText = styleTagText.replaceAll(
+            inlinedBundleRegex,
+            (match, bundleName) => {
+              if (bundleName === WILDCARD_BUNDLE_NAME) {
+                // If this is a wildcard import, we need to handle it later after we've processed all other nodes
+                wildCardInlinedCSSStyleNodes.add(node);
+                return match;
+              }
+              unimportedCSSBundleNameSet.delete(bundleName);
+              const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
+              if (cssContent === null) {
+                console.error(`No CSS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
+                return "";
+              }
+
+              return cssContent;
+            }
+          ).trim();
+
+          if (styleTagText.length === 0) {
+            console.warn(`Empty <style> tag found on page ${data.page.url} after resolving bundles. Removing.`);
+            return TRANSFORM_ACTIONS.REMOVE;
+          }
+
+          node.childNodes = [];
+          defaultTreeAdapter.insertText(node, styleTagText);
+
+          if (!shouldSkipProcessingContents) {
+            styleNodesToProcess.add(node);
+          }
+
+          return TRANSFORM_ACTIONS.CONTINUE;
+        };
+
+        /**
+         * @type {Set<Parse5Types.Element>}
+         */
+        const wildCardJSScriptImportNodes = new Set();
+        /**
+         * @type {Set<Parse5Types.Element>}
+         */
+        const wildCardInlinedJSScriptNodes = new Set();
+
+        /**
+         * <script> tags which we need to return to to process their contents once
+         * all bundles are resolved
+         * 
+         * @type {Set<Parse5Types.Element>}
+         */
+        const inlineScriptNodesToProcess = new Set();
+
+        /**
+         * @param {Parse5Types.Element} node
+         * @returns {TransformResult}
+         */
+        const handleScriptNode = (node) => {
+          const srcAttr = node.attrs.find((attr) => attr.name === "src") ?? null;
+          if (srcAttr) {
+          // Skip wild card imports here; they are handled in a second pass below
+            if (srcAttr.value.startsWith(bundleSrcPrefix)) {
+              const globalImportBundleName = srcAttr.value.slice(bundleSrcPrefixLength);
+              if (globalImportBundleName === WILDCARD_BUNDLE_NAME) {
+                // If this is a wildcard import, we need to handle it later after we've processed all other nodes
+                wildCardJSScriptImportNodes.add(node);
+              } else {
                 unimportedJSBundleNameSet.delete(globalImportBundleName);
                 const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
                 if (!jsContent) {
@@ -466,194 +483,241 @@ export default function (eleventyConfig) {
 
                 srcAttr.value = getJSBundleSrc(globalImportBundleName);
               }
-
-              return TRANSFORM_ACTIONS.CONTINUE;
             }
-
-            let shouldSkipProcessingContents = false;
-            node.attrs = node.attrs.filter((attr) => {
-              if (attr.name === "data-skip-inline-processing") {
-                shouldSkipProcessingContents = (attr.value ?? "false") !== "false";
-                // Remove this attribute after processing it
-                return false;
-              }
-              return true;
-            });
-
-            let scriptTagText = "";
-            for (const childNode of node.childNodes) {
-              if (defaultTreeAdapter.isTextNode(childNode)) {
-                scriptTagText += childNode.value;
-              }
-            }
-            scriptTagText = scriptTagText.trim();
-
-            if (scriptTagText.length === 0) {
-              console.warn(`Empty <script> tag found on page ${data.page.url}. Removing.`);
-              return TRANSFORM_ACTIONS.REMOVE;
-            }
-
-            scriptTagText = scriptTagText.replaceAll(
-              inlinedBundleRegex,
-              (match, bundleName) => {
-                unimportedJSBundleNameSet.delete(bundleName);
-                const jsContent = renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("") : null;
-                if (jsContent === null) {
-                  console.error(`No JS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
-                  return "";
-                }
-
-                return jsContent;
-              }
-            );
-
-            const scriptTagContentHash = createHash("md5").update(scriptTagText).digest("hex");
-
-            if (!shouldSkipProcessingContents) {
-              try {
-                if (processedInlineBundleCache[scriptTagContentHash] !== undefined) {
-                  scriptTagText = processedInlineBundleCache[scriptTagContentHash];
-                } else {
-                  const { code: transformedCode } = await transformJS(scriptTagText, {
-                    minify: true,
-                    target: ["es2020"],
-                    format: "esm",
-                  });
-                  scriptTagText = processedInlineBundleCache[scriptTagContentHash] = transformedCode.trimEnd();
-                }
-              } catch (err) {
-                console.error(`Error processing inlined JS on page ${data.page.url}: ${err}`);
-              }
-            }
-
-            if (scriptTagText.length === 0) {
-              console.warn(`Empty <script> tag found on page ${data.page.url} after processing. Removing.`);
-              return TRANSFORM_ACTIONS.REMOVE;
-            }
-
-            node.childNodes = [];
-            defaultTreeAdapter.insertText(node, scriptTagText);
-
             return TRANSFORM_ACTIONS.CONTINUE;
-          },
-        );
+          }
 
-        // Second pass to handle "rest" bundle imports where we should insert all remaining bundles
-        // which were used on this page but haven't been inserted into other script tags yet.
+          let shouldSkipProcessingContents = false;
+          node.attrs = node.attrs.filter((attr) => {
+            if (attr.name === "data-skip-inline-processing") {
+              shouldSkipProcessingContents = (attr.value ?? "false") !== "false";
+              // Remove this attribute after processing it
+              return false;
+            }
+            return true;
+          });
+
+          let scriptTagText = "";
+          for (const childNode of node.childNodes) {
+            if (defaultTreeAdapter.isTextNode(childNode)) {
+              scriptTagText += childNode.value;
+            }
+          }
+          scriptTagText = scriptTagText.trim();
+
+          if (scriptTagText.length === 0) {
+            console.warn(`Empty <script> tag found on page ${data.page.url}. Removing.`);
+            return TRANSFORM_ACTIONS.REMOVE;
+          }
+
+          scriptTagText = scriptTagText.replaceAll(
+            inlinedBundleRegex,
+            (match, bundleName) => {
+              if (bundleName === WILDCARD_BUNDLE_NAME) {
+                // If this is a wildcard import, we need to handle it later after we've processed all other nodes
+                wildCardInlinedJSScriptNodes.add(node);
+                return match;
+              }
+
+              unimportedJSBundleNameSet.delete(bundleName);
+              const jsContent = renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("") : null;
+              if (jsContent === null) {
+                console.error(`No JS bundle found with name "${bundleName}" to inline on page ${data.page.url}`);
+                return "";
+              }
+
+              return jsContent;
+            }
+          ).trim();
+
+          if (scriptTagText.length === 0) {
+            console.warn(`Empty <script> tag found on page ${data.page.url} after resolving bundles. Removing.`);
+            return TRANSFORM_ACTIONS.REMOVE;
+          }
+
+          node.childNodes = [];
+          defaultTreeAdapter.insertText(node, scriptTagText);
+
+          if (!shouldSkipProcessingContents) {
+            inlineScriptNodesToProcess.add(node);
+          }
+
+          return TRANSFORM_ACTIONS.CONTINUE;
+        };
+
+        // Transform and process all <link> tags which import CSS bundles
         await transformDocumentNodes(parsedDocument,
           async (node) => {
             if (!defaultTreeAdapter.isElementNode(node)) {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
 
-            if (node.tagName === "script") {
-              const srcAttrIndex = node.attrs.findIndex((attr) => attr.name === "src");
-              if (srcAttrIndex === -1) {
+            switch (node.tagName) {
+              case "link": {
+                return handleLinkNode(node);
+              }
+              case "style": {
+                return handleStyleNode(node);
+              }
+              case "script": {
+                return handleScriptNode(node);
+              }
+              default: {
                 return TRANSFORM_ACTIONS.CONTINUE;
               }
-
-              const srcAttr = node.attrs[srcAttrIndex];
-              if (srcAttr.value !== `${bundleSrcPrefix}${WILDCARD_BUNDLE_NAME}`) {
-                return TRANSFORM_ACTIONS.CONTINUE;
-              }
-
-              const wildCardScriptNodes = [];
-
-              const bundleNames = Array.from(unimportedJSBundleNameSet);
-              unimportedCSSBundleNameSet.clear();
-
-              for (const globalImportBundleName of bundleNames) {
-                const jsContent = renderedJSBundles && renderedJSBundles[globalImportBundleName] ? Array.from(renderedJSBundles[globalImportBundleName]).join("") : null;
-                if (!jsContent) {
-                  console.error(`JS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing script tag.`);
-                  continue;
-                }
-                globalJsBundles[globalImportBundleName] ??= new Set();
-                globalJsBundles[globalImportBundleName].add(jsContent);
-
-                /**
-                 * @type {Parse5Types.Element}
-                 */
-                const newNode = {
-                  ...node,
-                  attrs: [
-                    ...node.attrs.slice(0, srcAttrIndex),
-                    {
-                      name: "src",
-                      value: getJSBundleSrc(globalImportBundleName),
-                    },
-                    ...node.attrs.slice(srcAttrIndex + 1),
-                  ],
-                  parentNode: null,
-                };
-
-                wildCardScriptNodes.push(newNode);
-              }
-
-              return [TRANSFORM_ACTIONS.REPLACE, ...wildCardScriptNodes];
-            } else if (node.tagName === "link") {
-              const relAttr = node.attrs.find((attr) => attr.name === "rel") ?? null;
-              if (relAttr.value !== "stylesheet" && relAttr.value !== "preload") {
-                return TRANSFORM_ACTIONS.CONTINUE;
-              }
-
-              if (relAttr.value === "preload") {
-                const asAttr = node.attrs.find((attr) => attr.name === "as") ?? null;
-                if (asAttr.value !== "style") {
-                  return TRANSFORM_ACTIONS.CONTINUE;
-                }
-              }
-
-              const hrefAttrIndex = node.attrs.findIndex((attr) => attr.name === "href");
-              if (hrefAttrIndex === -1) {
-                return TRANSFORM_ACTIONS.CONTINUE;
-              }
-
-              const hrefAttr = node.attrs[hrefAttrIndex];
-              if (hrefAttr.value !== `${bundleSrcPrefix}${WILDCARD_BUNDLE_NAME}`) {
-                return TRANSFORM_ACTIONS.CONTINUE;
-              }
-
-              const wildCardLinkNodes = [];
-
-              const bundleNames = Array.from(unimportedCSSBundleNameSet);
-              unimportedCSSBundleNameSet.clear();
-
-              for (const globalImportBundleName of bundleNames) {
-                const cssContent = renderedCSSBundles[globalImportBundleName] ? Array.from(renderedCSSBundles[globalImportBundleName]).join("") : null;
-                if (!cssContent) {
-                  console.error(`CSS bundle "${globalImportBundleName}" is unused on page ${data.page.url}. Removing link tag.`);
-                  continue;
-                }
-
-                globalCssBundles[globalImportBundleName] ??= new Set();
-                globalCssBundles[globalImportBundleName].add(cssContent);
-
-                /**
-                 * @type {Parse5Types.Element}
-                 */
-                const newNode = {
-                  ...node,
-                  attrs: [
-                    ...node.attrs.slice(0, hrefAttrIndex),
-                    {
-                      name: "href",
-                      value: getCSSBundleHref(globalImportBundleName),
-                    },
-                    ...node.attrs.slice(hrefAttrIndex + 1),
-                  ],
-                  parentNode: null,
-                };
-
-                wildCardLinkNodes.push(newNode);
-              }
-
-              return [TRANSFORM_ACTIONS.REPLACE, ...wildCardLinkNodes];
             }
-
-            return TRANSFORM_ACTIONS.CONTINUE;
           },
         );
+
+        const wildCardCSSBundleNames = Array.from(unimportedCSSBundleNameSet);
+
+        for (const wildCardLinkNode of wildCardCSSLinkNodes) {
+          const nodeIndex = wildCardLinkNode.parentNode.childNodes.indexOf(wildCardLinkNode);
+          const newNodes = [];
+          for (const bundleName of wildCardCSSBundleNames) {
+            const cssContent = renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("") : null;
+            if (!cssContent) {
+              continue;
+            }
+
+            globalCssBundles[bundleName] ??= new Set();
+            globalCssBundles[bundleName].add(cssContent);
+
+            const newNode = {
+              ...wildCardLinkNode,
+            };
+            const hrefAttr = newNode.attrs.find((attr) => attr.name === "href");
+            hrefAttr.value = getCSSBundleHref(bundleName);
+
+            newNodes.push(newNode);
+          }
+
+          wildCardLinkNode.parentNode.childNodes.splice(nodeIndex, 1, ...newNodes);
+        }
+
+        for (const styleNode of wildCardInlinedCSSStyleNodes) {
+          const combinedWildCardBundleContent = wildCardCSSBundleNames.map((bundleName) => {
+            return renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("\n") : null;
+          }).join("\n").trim();
+
+
+          const currentStyleTagText = styleNode.childNodes.map((childNode) => defaultTreeAdapter.isTextNode(childNode) ? childNode.value : "").join("").trim();
+          const newStyleTagText = currentStyleTagText.replaceAll(
+            inlinedWildCardBundle,
+            combinedWildCardBundleContent
+          );
+
+          styleNode.childNodes = [];
+          defaultTreeAdapter.insertText(styleNode, newStyleTagText);
+        }
+
+        const wildCardJSBundleNames = Array.from(unimportedJSBundleNameSet);
+
+        for (const scriptNode of wildCardJSScriptImportNodes) {
+          const nodeIndex = scriptNode.parentNode.childNodes.indexOf(scriptNode);
+          const newNodes = [];
+          for (const bundleName of wildCardJSBundleNames) {
+            const jsContent = renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("") : null;
+            if (!jsContent) {
+              continue;
+            }
+
+            globalJsBundles[bundleName] ??= new Set();
+            globalJsBundles[bundleName].add(jsContent);
+            const newNode = {
+              ...scriptNode,
+            };
+            const srcAttr = newNode.attrs.find((attr) => attr.name === "src");
+            srcAttr.value = getJSBundleSrc(bundleName);
+
+            newNodes.push(newNode);
+          }
+
+          scriptNode.parentNode.childNodes.splice(nodeIndex, 1, ...newNodes);
+        }
+
+        for (const scriptNode of wildCardInlinedJSScriptNodes) {
+          const combinedWildCardBundleContent = wildCardJSBundleNames.map((bundleName) => {
+            return renderedJSBundles && renderedJSBundles[bundleName] ? Array.from(renderedJSBundles[bundleName]).join("\n") : null;
+          }).join("\n").trim();
+
+          const currentScriptTagText = scriptNode.childNodes.map((childNode) => defaultTreeAdapter.isTextNode(childNode) ? childNode.value : "").join("").trim();
+          const newScriptTagText = currentScriptTagText.replaceAll(
+            inlinedWildCardBundle,
+            combinedWildCardBundleContent
+          );
+
+          scriptNode.childNodes = [];
+          defaultTreeAdapter.insertText(scriptNode, newScriptTagText);
+        }
+
+        let styleTagIndex = -1;
+        for (const styleNode of styleNodesToProcess) {
+          styleTagIndex += 1;
+
+          let styleTagText = styleNode.childNodes.map((childNode) => defaultTreeAdapter.isTextNode(childNode) ? childNode.value : "").join("").trim();
+
+          const styleTagContentHash = createHash("md5").update(styleTagText).digest("hex");
+
+          try {
+            if (processedInlineBundleCache[styleTagContentHash] !== undefined) {
+              styleTagText = processedInlineBundleCache[styleTagContentHash];
+            } else {
+              const { code } = transformCSS({
+                filename: `${encodeURIComponent(data.page.url)}__<style>(${styleTagIndex}).css`,
+                code: encoder.encode(styleTagText),
+                minify: true,
+                include: Features.Nesting,
+              });
+              styleTagText = processedInlineBundleCache[styleTagContentHash] = decoder.decode(code);
+            }
+          } catch (err) {
+            console.error(`Error processing inlined CSS on page ${data.page.url}: ${err}`);
+          }
+
+          if (styleTagText.length === 0) {
+            console.warn(`Empty <style> tag found on page ${data.page.url} after processing. Removing.`);
+            defaultTreeAdapter.detachNode(styleNode);
+          } else {
+            styleNode.childNodes = [];
+            defaultTreeAdapter.insertText(styleNode, styleTagText);
+          }
+        }
+
+
+        let scriptTagIndex = -1;
+
+        for (const scriptNode of inlineScriptNodesToProcess) {
+          scriptTagIndex += 1;
+
+          let scriptTagText = scriptNode.childNodes.map((childNode) => defaultTreeAdapter.isTextNode(childNode) ? childNode.value : "").join("").trim();
+
+          const scriptTagContentHash = createHash("md5").update(scriptTagText).digest("hex");
+
+          try {
+            if (processedInlineBundleCache[scriptTagContentHash] !== undefined) {
+              scriptTagText = processedInlineBundleCache[scriptTagContentHash];
+            } else {
+              const { code: transformedCode } = await transformJS(scriptTagText, {
+                minify: true,
+                target: ["es2020"],
+                format: "esm",
+                sourcefile: `${encodeURIComponent(data.page.url)}__<script>(${scriptTagIndex}).js`,
+              });
+              scriptTagText = processedInlineBundleCache[scriptTagContentHash] = transformedCode.trimEnd();
+            }
+          } catch (err) {
+            console.error(`Error processing inlined JS on page ${data.page.url}: ${err}`);
+          }
+
+          if (scriptTagText.length === 0) {
+            console.warn(`Empty <script> tag found on page ${data.page.url} after processing. Removing.`);
+            defaultTreeAdapter.detachNode(scriptNode);
+          } else {
+            scriptNode.childNodes = [];
+            defaultTreeAdapter.insertText(scriptNode, scriptTagText);
+          }
+        }
 
         return serializeHTML(parsedDocument);
       };
