@@ -28,12 +28,10 @@ export const bundle = (bundleName = DEFAULT_BUNDLE_NAME) => {
 };
 
 export const importFilePathSymbol = Symbol("import-file-path");
-export const importFileContentsSymbol = Symbol("import-file-contents");
 
 /**
  * @typedef {{
  *  [importFilePathSymbol]: string;
- *  [importFileContentsSymbol]: string;
  *  [bundleNameSymbol]?: string;
  * }} BundleImportObject
  */
@@ -72,10 +70,8 @@ bundle.import = (importPath, bundleName) => {
   }
 
   try {
-    const fileContents = readFileSync(resolvedFilePath, "utf-8");
     return ({
-      [importFilePathSymbol]: importPath,
-      [importFileContentsSymbol]: fileContents,
+      [importFilePathSymbol]: resolvedFilePath,
       [bundleNameSymbol]: bundleName,
     })
   } catch (err) {
@@ -115,7 +111,10 @@ export const getBundleImportFilePath = (bundleImportObj) => bundleImportObj[impo
  * @param {BundleImportObject} bundleImportObj
  * @returns {string}
  */
-export const getBundleImportFileContents = (bundleImportObj) => bundleImportObj[importFileContentsSymbol];
+export const getBundleImportFileContents = (bundleImportObj) => {
+  const filePath = bundleImportObj[importFilePathSymbol];
+  return readFileSync(filePath, "utf8");
+}
 
 export const bundleSrcPrefix = "__bundle__";
 export const bundleSrcPrefixLength = bundleSrcPrefix.length;

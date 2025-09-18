@@ -52,7 +52,7 @@ const DOMAttributeNames = {
 
 /**
  * @param {unknown} tagNameOrComponent 
- * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: Record<string, string>; js?: Record<string, string> }}
+ * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: ()=>Record<string, string>; js?: ()=>Record<string, string> }}
  */
 const isNestedComponent = (tagNameOrComponent) => typeof tagNameOrComponent === 'function';
 
@@ -90,7 +90,7 @@ function h(tagNameOrComponent, attrs, ...children) {
 
   // Sortof component support!
   if (isNestedComponent(tagNameOrComponent)) {
-    const componentCSS = tagNameOrComponent.css;
+    const componentCSS = tagNameOrComponent.css?.();
     if (componentCSS) {
       for (const bundleName in componentCSS) {
         cssBundles[bundleName] ??= new Set();
@@ -98,7 +98,7 @@ function h(tagNameOrComponent, attrs, ...children) {
       }
     }
 
-    const componentJS = tagNameOrComponent.js;
+    const componentJS = tagNameOrComponent.js?.();
     if (componentJS) {
       for (const bundleName in componentJS) {
         jsBundles[bundleName] ??= new Set();

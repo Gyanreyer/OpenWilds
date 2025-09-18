@@ -117,7 +117,9 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "site/public": "/",
   });
-  eleventyConfig.addWatchTarget("site/_components/**/*.js");
+  eleventyConfig.addWatchTarget("site/**/*.js");
+  eleventyConfig.addWatchTarget("site/**/*.css");
+  eleventyConfig.setWatchJavaScriptDependencies(false);
 
   eleventyConfig.addTemplateFormats("page.js");
 
@@ -463,7 +465,7 @@ export default function (eleventyConfig) {
         const handleScriptNode = (node) => {
           const srcAttr = node.attrs.find((attr) => attr.name === "src") ?? null;
           if (srcAttr) {
-          // Skip wild card imports here; they are handled in a second pass below
+            // Skip wild card imports here; they are handled in a second pass below
             if (srcAttr.value.startsWith(bundleSrcPrefix)) {
               const globalImportBundleName = srcAttr.value.slice(bundleSrcPrefixLength);
               if (globalImportBundleName === WILDCARD_BUNDLE_NAME) {
