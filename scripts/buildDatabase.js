@@ -1,11 +1,12 @@
 import Database from 'better-sqlite3';
 import { glob } from "tinyglobby";
 import { parse as parseYaml } from "yaml";
-import { readFile, access, mkdir } from "node:fs/promises";
+import { readFile, access, mkdir, writeFile } from "node:fs/promises";
 import {
   join,
 } from 'node:path';
 import { heightStringToInches } from '../utils/heightStringToInches.js';
+import { gzipSync } from 'node:zlib';
 
 const distDir = import.meta.resolve("../dist/").slice("file://".length);
 
@@ -334,6 +335,15 @@ const plantDataEntries = await Promise.all(
 insertPlantEntries(plantDataEntries);
 
 db.exec("ANALYZE;");
+
+// Set journal mode back to DELETE so it can be loaded in the browser
+db.pragma("journal_mode = DELETE");
 db.exec("VACUUM;");
+// Enforce read-only mode
+db.pragma("query_only = ON");
 
 db.close();
+
+const sitePublicDir = import.meta.resolve("../site/public").slice("file://".length);
+const dbFile = await readFile(dbPath);
+await writeFile(join(sitePublicDir, `OpenWilds.db.gz`), gzipSync(dbFile));

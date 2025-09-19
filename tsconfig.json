@@ -11,8 +11,9 @@
       "#site-lib/*": ["./site/_lib/*"],
       "#site-components/*": ["./site/_components/*"],
       "#site-layouts/*": ["./site/_layouts/*"],
-      "#site-utils/*": ["./site/_utils/*"],
+      "#site-utils/*": ["./site/_utils/*"]
     }
   },
-  "include": ["**/*.js", "**/*.ts"]
+  "include": ["**/*.js", "**/*.ts"],
+  "exclude": ["node_modules", "dist", "site/public/lib"]
 }

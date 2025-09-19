@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "site:build": "npx @11ty/eleventy",
-    "site:serve": "npx @11ty/eleventy --serve"
+    "site:serve": "npx @11ty/eleventy --serve",
+    "db:build": "node scripts/buildDatabase.js"
   },
   "author": "Ryan Geyer",
   "license": "Unlicense",
@@ -28,6 +29,7 @@
   },
   "dependencies": {
     "@11ty/eleventy": "^3.1.2",
+    "@sqlite.org/sqlite-wasm": "^3.50.4-build1",
     "better-sqlite3": "^12.2.0",
     "htm": "^3.1.1",
     "parse5": "^8.0.0",
