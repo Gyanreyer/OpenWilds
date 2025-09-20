@@ -11,11 +11,14 @@ import {
   resolve,
 } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+
 import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex, inlinedWildcardBundle as inlinedWildCardBundle, WILDCARD_BUNDLE_NAME } from '#site-lib/bundle.js';
+import { renderComponent } from '#site-lib/renderComponent.js';
 
 /**
  * @import { UserConfig } from '@11ty/eleventy';
  * @import { DefaultTreeAdapterTypes as Parse5Types } from 'parse5';
+ * @import { Component } from '#site-lib/renderComponent.js';
  */
 
 /**
@@ -117,11 +120,11 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "site/public": "/",
   });
-  eleventyConfig.addWatchTarget("site/**/*.js");
-  eleventyConfig.addWatchTarget("site/**/*.css");
-  eleventyConfig.setWatchJavaScriptDependencies(false);
 
   eleventyConfig.addTemplateFormats("page.js");
+  // TODO: addDependencies seems like it should work, but it doesn't.
+  // Need to investigate why.
+  eleventyConfig.addWatchTarget("site/_components/**/*.js");
 
   /**
    * @type {Record<string, Set<string>>}
@@ -141,7 +144,7 @@ export default function (eleventyConfig) {
     async getInstanceFromInputPath(inputPath) {
       const mod = await import(inputPath);
       return {
-        render: mod.default,
+        pageComponent: mod.default,
         config: mod.config || {},
       };
     },
@@ -154,10 +157,10 @@ export default function (eleventyConfig) {
     },
     /**
      * @param {Object} compileContext 
-     * @param {((data: any) => import('#site-lib/html').RenderResult) & { css?: Record<string, string>; js?: Record<string, string> }} compileContext.render
+     * @param {Component} compileContext.pageComponent
      * @returns {(data: any) => Promise<string>}
      */
-    compile({ render }) {
+    compile({ pageComponent }, inputPath) {
       /**
        * Object to cache results from processing inline bundles so we don't re-process the same
        * content multiple times. Doing this on the page template level because that tends to be where
@@ -182,7 +185,11 @@ export default function (eleventyConfig) {
           html,
           cssBundles: renderedCSSBundles,
           jsBundles: renderedJSBundles,
-        } = render(data);
+          cssDependencies: renderedCSSDeps,
+          jsDependencies: renderedJSDeps,
+        } = renderComponent(pageComponent, data);
+
+        this.addDependencies(inputPath, [...renderedCSSDeps, ...renderedJSDeps]);
 
         // Set of JS bundles which were used on this page but haven't been inserted into script tags yet
         const unimportedJSBundleNameSet = new Set(Object.keys(renderedJSBundles));

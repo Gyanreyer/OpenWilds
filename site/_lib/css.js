@@ -1,8 +1,18 @@
-import { DEFAULT_BUNDLE_NAME, getBundleImportFileContents, getBundleName, isBundleImportObject, isBundleObject } from "./bundle.js";
+import { DEFAULT_BUNDLE_NAME, getBundleImportFileContents, getBundleImportFilePath, getBundleName, isBundleImportObject, isBundleObject } from "./bundle.js";
+
+/**
+ * @typedef {{
+ *  cssBundles: {
+ *    [bundleName: string]: string;
+ *  };
+ *  cssDependencies: string[];
+ * }} CSSResult
+ */
 
 /**
  * @param {TemplateStringsArray} strings
  * @param  {...any} values
+ * @returns {() => CSSResult}
  */
 export function css(strings, ...values) {
   return () => {
@@ -10,6 +20,10 @@ export function css(strings, ...values) {
      * @type {Record<string, string[]>}
      */
     const rawCSSBundles = {};
+    /**
+     * @type {Set<string>}
+     */
+    const cssBundleDependencies = new Set();
 
     let currentBundleName = DEFAULT_BUNDLE_NAME;
 
@@ -29,6 +43,7 @@ export function css(strings, ...values) {
           const fileContents = getBundleImportFileContents(value);
           const importBundleArray = (rawCSSBundles[importBundleName] ??= []);
           importBundleArray.push(fileContents);
+          cssBundleDependencies.add(getBundleImportFilePath(value));
         } catch (err) {
           throw new Error(`bundle.import failed to import file at path "${importBundleName}": ${err.message}`);
         }
@@ -56,6 +71,9 @@ export function css(strings, ...values) {
       cssBundles[bundleName] = combinedBundleString;
     }
 
-    return cssBundles;
+    return {
+      cssBundles,
+      cssDependencies: Array.from(cssBundleDependencies),
+    };
   };
 }

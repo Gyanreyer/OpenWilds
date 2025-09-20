@@ -1,8 +1,18 @@
-import { DEFAULT_BUNDLE_NAME, getBundleImportFileContents, getBundleName, isBundleImportObject, isBundleObject } from "./bundle.js";
+import { DEFAULT_BUNDLE_NAME, getBundleImportFileContents, getBundleImportFilePath, getBundleName, isBundleImportObject, isBundleObject } from "./bundle.js";
+
+/**
+ * @typedef {{
+ *  jsBundles:{
+ *    [bundleName: string]: string;
+ *  };
+ *  jsDependencies: string[];
+ * }} JSResult
+ */
 
 /**
  * @param {TemplateStringsArray} strings
  * @param  {...any} values
+ * @returns {() => JSResult}
  */
 export function js(strings, ...values) {
   return () => {
@@ -10,6 +20,10 @@ export function js(strings, ...values) {
      * @type {Record<string, string[]>}
      */
     const rawJSBundles = {};
+    /**
+     * @type {Set<string>}
+     */
+    const jsBundleDependencies = new Set();
 
     let currentBundleName = DEFAULT_BUNDLE_NAME;
 
@@ -21,6 +35,7 @@ export function js(strings, ...values) {
       const value = values[i];
 
       if (isBundleImportObject(value)) {
+        jsBundleDependencies.add(getBundleImportFilePath(value));
         let importBundleName = currentBundleName;
         if (isBundleObject(value)) {
           importBundleName = getBundleName(value);
@@ -56,6 +71,9 @@ export function js(strings, ...values) {
       jsBundles[bundleName] = `{\n${combinedBundleString}\n}`;
     }
 
-    return jsBundles;
+    return {
+      jsBundles,
+      jsDependencies: Array.from(jsBundleDependencies),
+    };
   };
 }

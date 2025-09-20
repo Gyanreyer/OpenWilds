@@ -1,5 +1,10 @@
 import htm from "htm";
 
+/**
+ * @import { JSResult } from "./js.js"
+ * @import { CSSResult } from "./css.js"
+ */
+
 const voidTagNames = {
   'area': true,
   'base': true,
@@ -31,7 +36,6 @@ const escapedCharacterMap = {
 };
 const escape = (str) => String(str).replace(escapeCharactersRegex, (s) => `&${escapedCharacterMap[s]};`);
 
-
 const setInnerHTMLAttr = 'dangerouslySetInnerHTML';
 const DOMAttributeNames = {
   className: 'class',
@@ -44,15 +48,19 @@ const DOMAttributeNames = {
  *  cssBundles: {
  *    [bundleName: string]: Set<string>;
  *  };
+ *  cssDependencies: Set<string>;
  *  jsBundles:{
  *    [bundleName: string]: Set<string>;
  *  };
+ *  jsDependencies: Set<string>;
  * }} RenderResult
  */
 
+
+
 /**
  * @param {unknown} tagNameOrComponent 
- * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: ()=>Record<string, string>; js?: ()=>Record<string, string> }}
+ * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: ()=>CSSResult; js?: ()=>JSResult }}
  */
 const isNestedComponent = (tagNameOrComponent) => typeof tagNameOrComponent === 'function';
 
@@ -80,6 +88,10 @@ function h(tagNameOrComponent, attrs, ...children) {
    * }}
    */
   const cssBundles = {};
+  /**
+   * @type {Set<string>}
+   */
+  const cssDependencies = new Set();
 
   /**
    * @type {{
@@ -87,22 +99,32 @@ function h(tagNameOrComponent, attrs, ...children) {
    * }}
    */
   const jsBundles = {};
+  /**
+   * @type {Set<string>}
+   */
+  const jsDependencies = new Set();
 
   // Sortof component support!
   if (isNestedComponent(tagNameOrComponent)) {
     const componentCSS = tagNameOrComponent.css?.();
     if (componentCSS) {
-      for (const bundleName in componentCSS) {
+      for (const bundleName in componentCSS.cssBundles) {
         cssBundles[bundleName] ??= new Set();
-        cssBundles[bundleName].add(componentCSS[bundleName]);
+        cssBundles[bundleName].add(componentCSS.cssBundles[bundleName]);
+      }
+      for (const dependency of componentCSS.cssDependencies) {
+        cssDependencies.add(dependency);
       }
     }
 
     const componentJS = tagNameOrComponent.js?.();
     if (componentJS) {
-      for (const bundleName in componentJS) {
+      for (const bundleName in componentJS.jsBundles) {
         jsBundles[bundleName] ??= new Set();
-        jsBundles[bundleName].add(componentJS[bundleName]);
+        jsBundles[bundleName].add(componentJS.jsBundles[bundleName]);
+      }
+      for (const dependency of componentJS.jsDependencies) {
+        jsDependencies.add(dependency);
       }
     }
 
@@ -110,10 +132,19 @@ function h(tagNameOrComponent, attrs, ...children) {
       html: componentHTML,
       cssBundles: componentCSSBundles = {},
       jsBundles: componentJSBundles = {},
+      cssDependencies: componentCSSDependencies = [],
+      jsDependencies: componentJSDependencies = [],
     } = tagNameOrComponent({
       ...attrs,
       children,
     });
+
+    for (const dependency of componentCSSDependencies) {
+      cssDependencies.add(dependency);
+    }
+    for (const dependency of componentJSDependencies) {
+      jsDependencies.add(dependency);
+    }
 
     for (const bucketName in componentCSSBundles) {
       cssBundles[bucketName] ??= new Set();
@@ -132,7 +163,9 @@ function h(tagNameOrComponent, attrs, ...children) {
     return {
       html: componentHTML,
       cssBundles,
+      cssDependencies,
       jsBundles,
+      jsDependencies,
     };
   }
 
@@ -177,6 +210,16 @@ function h(tagNameOrComponent, attrs, ...children) {
               }
             }
           }
+          if (children.cssDependencies) {
+            for (const dependency of children.cssDependencies) {
+              cssDependencies.add(dependency);
+            }
+          }
+          if (children.jsDependencies) {
+            for (const dependency of children.jsDependencies) {
+              jsDependencies.add(dependency);
+            }
+          }
         }
       };
 
@@ -189,7 +232,9 @@ function h(tagNameOrComponent, attrs, ...children) {
   return {
     html: serializedHTMLStr,
     cssBundles,
+    cssDependencies,
     jsBundles,
+    jsDependencies,
   };
 }
 

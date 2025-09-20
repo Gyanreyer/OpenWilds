@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "site:build": "npx @11ty/eleventy",
-    "site:serve": "npx @11ty/eleventy --serve",
+    "site:serve": "npx @11ty/eleventy --serve --incremental",
     "db:build": "node scripts/buildDatabase.js"
   },
   "author": "Ryan Geyer",
