@@ -125,7 +125,7 @@ export default function Plant({ dataEntry }) {
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
     <script type="module" async>
-      ${bundle.inline("plant")}
+      ${bundle.inline("*")}
     </script>
   <//>`;
 }

@@ -128,10 +128,6 @@ bundle.src = (bundleName) => `${bundleSrcPrefix}${bundleName}`;
  * @param {string} bundleName
  */
 bundle.inline = (bundleName) => {
-  if (bundleName === WILDCARD_BUNDLE_NAME) {
-    throw new Error(`inlinedBundle() does not support wildcard bundling. Use bundle.src("${WILDCARD_BUNDLE_NAME}") instead.`);
-  }
-
   return `/*@--BUNDLE--${bundleName}--@*/`;
 }
 

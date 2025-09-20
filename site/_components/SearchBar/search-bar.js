@@ -20,8 +20,23 @@ import("/lib/sqlite3.mjs").then(async (module) => {
   );
   db.checkRc(rc);
 
-  const plants = db.selectValues("SELECT scientific_name FROM plants LIMIT 5");
-  console.log(plants);
+  /**
+   * @param {string} query 
+   */
+  window.searchDB = (query) => {
+    return db.selectObjects(`
+      SELECT
+        plants.path as path,
+        MAX(plant_name_fts.common_name) as common_name,
+        MAX(plant_name_fts.scientific_name) as scientific_name 
+      from plant_name_fts
+      JOIN plants on plant_name_fts.plant_id = plants.id
+      WHERE plant_name_fts MATCH '${query}*'
+      GROUP BY plants.path
+      ORDER BY rank
+      LIMIT 16
+   `);
+  }
 });
 
 window.customElements.define("search-bar", class extends HTMLElement {
@@ -37,6 +52,7 @@ window.customElements.define("search-bar", class extends HTMLElement {
       const formData = new FormData(form);
       const query = formData.get("query").toString().trim();
       console.log("Search query:", query);
+      console.log(window.searchDB(query));
       // Load sqlite wasm and perform search
     });
   }

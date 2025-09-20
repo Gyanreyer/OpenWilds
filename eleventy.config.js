@@ -122,9 +122,7 @@ export default function (eleventyConfig) {
   });
 
   eleventyConfig.addTemplateFormats("page.js");
-  // TODO: addDependencies seems like it should work, but it doesn't.
-  // Need to investigate why.
-  eleventyConfig.addWatchTarget("site/_components/**/*.js");
+  eleventyConfig.addWatchTarget("site/**/*");
 
   /**
    * @type {Record<string, Set<string>>}
@@ -158,6 +156,8 @@ export default function (eleventyConfig) {
     /**
      * @param {Object} compileContext 
      * @param {Component} compileContext.pageComponent
+     * @param {string} inputPath
+     *
      * @returns {(data: any) => Promise<string>}
      */
     compile({ pageComponent }, inputPath) {
