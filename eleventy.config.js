@@ -808,10 +808,10 @@ export default function (eleventyConfig) {
             minify: true,
             target: ["es2020"],
             format: "esm",
-            sourcemap: true,
+            sourcemap: "external",
             sourcefile: `${bundleName}.js`,
           });
-          code = `//# sourceMappingURL=${bundleName}.js.map\n${result.code}`;
+          code = `${result.code}//# sourceMappingURL=${bundleName}.js.map`;
           sourceMap = result.map;
         } catch (err) {
           console.error("Error processing JS bundle", bundleName, ":", err);

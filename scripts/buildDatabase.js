@@ -1,10 +1,11 @@
 import Database from 'better-sqlite3';
 import { glob } from "tinyglobby";
 import { parse as parseYaml } from "yaml";
-import { readFile, access, mkdir } from "node:fs/promises";
+import { readFile, access, mkdir, writeFile } from "node:fs/promises";
 import {
   join,
 } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { heightStringToInches } from '../utils/heightStringToInches.js';
 
 const distDir = import.meta.resolve("../dist/").slice("file://".length);
@@ -92,8 +93,9 @@ db.exec(`
   -- FTS5 virtual table for searching scientific and common names
   CREATE VIRTUAL TABLE IF NOT EXISTS plant_name_fts USING fts5(
     plant_id UNINDEXED,
+    common_name,
     scientific_name,
-    common_name
+    tokenize='trigram'
   );
 
   CREATE INDEX IF NOT EXISTS idx_plants_path ON plants(path);
@@ -227,8 +229,8 @@ const insertPlantDistributionRegion = db.prepare(`
 `);
 
 const insertIntoFTS = db.prepare(`
-  INSERT INTO plant_name_fts (plant_id, scientific_name, common_name)
-  VALUES (@plant_id, @scientific_name, @common_name)
+  INSERT INTO plant_name_fts (plant_id, common_name, scientific_name)
+  VALUES (@plant_id, @common_name, @scientific_name)
 `);
 
 /**
@@ -271,8 +273,8 @@ const insertPlantEntries = db.transaction(
       // Insert scientific name into FTS (with empty common_name)
       insertIntoFTS.run({
         plant_id: plantID,
+        common_name: '',
         scientific_name: entry.scientific_name,
-        common_name: ''
       });
 
       insertCommonNames({ plant_id: plantID, common_names: entry.common_names });
@@ -281,8 +283,8 @@ const insertPlantEntries = db.transaction(
       for (const name of entry.common_names) {
         insertIntoFTS.run({
           plant_id: plantID,
+          common_name: name.trim(),
           scientific_name: '',
-          common_name: name.trim()
         });
       }
 
@@ -334,6 +336,14 @@ const plantDataEntries = await Promise.all(
 insertPlantEntries(plantDataEntries);
 
 db.exec("ANALYZE;");
+// Set journal mode back to DELETE so it can be loaded in the browser
+db.pragma("journal_mode = DELETE");
 db.exec("VACUUM;");
+// Enforce read-only mode
+db.pragma("query_only = ON");
 
 db.close();
+
+const sitePublicDir = import.meta.resolve("../site/public").slice("file://".length);
+const dbFile = await readFile(dbPath);
+await writeFile(join(sitePublicDir, `OpenWilds.db.gz`), gzipSync(dbFile));
