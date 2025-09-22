@@ -21,8 +21,7 @@ import { Head } from "#site-lib/components/Head.component.js";
 const baseDataFileDirectoryPath = import.meta
   .resolve("../data/")
   .slice("file://".length);
-// FIXME: temp
-const dataEntryPaths = await glob("plantae/**/echinacea/purpurea/data.yml", {
+const dataEntryPaths = await glob("plantae/**/data.yml", {
   cwd: baseDataFileDirectoryPath,
   onlyFiles: true,
   absolute: true,

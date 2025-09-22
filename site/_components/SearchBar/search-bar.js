@@ -45,6 +45,53 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
   static DB = null;
   static DB_PROMISE = null;
 
+  static styles = /*css*/`
+    search-bar {
+      position: relative;
+    }
+
+    search-bar form input {
+      display: block;
+      width: 100%;
+    }
+
+    #search-results-container {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      border-end-start-radius: 8px;
+      border-end-end-radius: 8px;
+      height: 100px;
+      background: white;
+      border: 1px solid black;
+    }
+
+    #search-results-container:not(:has(ul > li)) {
+      /* Hide if no search results */
+      display: none;
+    }
+  `;
+
+  static {
+    const stylesheet = new CSSStyleSheet();
+    stylesheet.replaceSync(SearchBarElement.styles);
+    document.adoptedStyleSheets.push(stylesheet);
+  }
+
+  constructor() {
+    super();
+
+    const searchResultsContainer = document.createElement("div");
+    searchResultsContainer.id = "search-results-container";
+
+    const searchResultsList = document.createElement("ul");
+    searchResultsList.id = "search-results";
+
+    searchResultsContainer.appendChild(searchResultsList);
+    this.appendChild(searchResultsContainer);
+  }
+
   connectedCallback() {
     const form = this.querySelector("form");
     if (!form) {
@@ -61,18 +108,18 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
   static getSearchDBQuery = (searchString) => `SELECT
   plants.path as path,
   plants.scientific_name as scientific_name,
-  MAX(plant_name_fts.common_name) as matching_common_name
-  -- MAX(plant_common_names.common_name) as common_name
+  MAX(plant_name_fts.common_name) as matching_common_name,
+  MAX(plant_common_names.common_name) as common_name
 from plant_name_fts('${searchString}')
 JOIN plants on plant_name_fts.plant_id = plants.id
--- join plant_common_names on plant_name_fts.plant_id = plant_common_names.plant_id
+JOIN plant_common_names on plant_name_fts.plant_id = plant_common_names.plant_id
 GROUP BY plants.path
 ORDER BY rank
 LIMIT 16`;
 
   /**
-   * 
-   * @param {SubmitEvent} evt 
+   *
+   * @param {SubmitEvent} evt
    */
   onSubmitSearch = async (evt) => {
     evt.preventDefault();
@@ -94,6 +141,19 @@ LIMIT 16`;
      * @type {SearchResult[]}
      */
     const results = db.selectObjects(SearchBarElement.getSearchDBQuery(query));
-    console.log(results);
+    const searchResultsListElement = this.querySelector("#search-results");
+    if (!searchResultsListElement) {
+      console.error("Could not find #search-results element");
+      return;
+    }
+    const newSearchResultNodes = results.map((result) => {
+      const listItem = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = result.path;
+      link.textContent = `${result.matching_common_name || result.common_name} (${result.scientific_name})`;
+      listItem.appendChild(link);
+      return listItem;
+    });
+    searchResultsListElement.replaceChildren(...newSearchResultNodes);
   }
 });
