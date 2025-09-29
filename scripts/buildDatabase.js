@@ -53,14 +53,16 @@ db.exec(/*sql*/`
 
   --- Table to store common names separately for better querying for searches
   CREATE TABLE IF NOT EXISTS plant_common_names (
-    plant_id      INTEGER   NOT NULL,
-    common_name   TEXT      NOT NULL,
+    plant_id        INTEGER   NOT NULL,
+    common_name     TEXT      NOT NULL,
+    is_primary_name BOOLEAN   NOT NULL DEFAULT FALSE,
 
     PRIMARY KEY (plant_id, common_name),
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
   );
 
   CREATE INDEX IF NOT EXISTS idx_common_name ON plant_common_names(common_name);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_primary_name ON plant_common_names(plant_id) WHERE is_primary_name = TRUE;
 
   --- Table to store bloom colors for each plant
   CREATE TABLE IF NOT EXISTS plant_bloom_colors (
@@ -133,10 +135,12 @@ const insertPlantEntry = db.prepare(/*sql*/`
 const insertCommonName = db.prepare(/*sql*/`
   INSERT INTO plant_common_names (
     plant_id,
-    common_name
+    common_name,
+    is_primary_name
   ) VALUES (
     @plant_id,
-    @common_name
+    @common_name,
+    @is_primary_name
   );
 `);
 
@@ -144,10 +148,13 @@ const insertCommonNames = db.transaction(({
   plant_id,
   common_names
 }) => {
-  for (const name of common_names) {
+  for (let i = 0; i < common_names.length; i++) {
+    const name = common_names[i];
     insertCommonName.run({
       plant_id,
       common_name: name.trim(),
+      // First name is primary. We can't bind boolean directly for some reason so use 1/0
+      is_primary_name: i === 0 ? 1 : 0,
     });
   }
 });

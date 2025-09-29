@@ -41,7 +41,7 @@ const getDB = async () => {
  * @property {string} path
  * @property {string} scientific_name
  * @property {string} matching_common_name
- * @property {string} common_name
+ * @property {string} primary_common_name
  */
 
 window.customElements.define("search-bar", class SearchBarElement extends HTMLElement {
@@ -58,10 +58,12 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     plants.path as path,
     plants.scientific_name as scientific_name,
     MAX(plant_name_fts.common_name) as matching_common_name,
-    MAX(plant_common_names.common_name) as common_name
+    primary_names.common_name as primary_common_name
   from plant_name_fts(?)
   JOIN plants on plant_name_fts.plant_id = plants.id
-  JOIN plant_common_names on plant_name_fts.plant_id = plant_common_names.plant_id
+  LEFT JOIN plant_common_names as primary_names
+    ON plant_name_fts.plant_id = primary_names.plant_id
+    AND primary_names.is_primary_name = 1
   GROUP BY plants.path
   ORDER BY rank
   LIMIT 16`;
@@ -166,7 +168,7 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       const listItem = document.createElement("li");
       const link = document.createElement("a");
       link.href = result.path;
-      link.textContent = `${result.matching_common_name || result.common_name} (${result.scientific_name})`;
+      link.textContent = `${result.matching_common_name || result.primary_common_name} (${result.scientific_name})`;
       listItem.appendChild(link);
       return listItem;
     });
