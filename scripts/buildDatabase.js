@@ -26,7 +26,7 @@ db.pragma("foreign_keys = ON");
 db.pragma("temp_store = MEMORY");
 db.pragma("cache_size = -20000");
 
-db.exec(`
+db.exec(/*sql*/`
   --- Drop existing tables if they exist to start from a clean slate
   DROP TABLE IF EXISTS plant_name_fts;
   DROP TABLE IF EXISTS plant_distribution_regions;
@@ -102,7 +102,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_plants_scientific_name ON plants(scientific_name);
 `);
 
-const insertPlantEntry = db.prepare(`
+const insertPlantEntry = db.prepare(/*sql*/`
   INSERT INTO plants (
     path,
     scientific_name,
@@ -130,7 +130,7 @@ const insertPlantEntry = db.prepare(`
   ) RETURNING id;
 `);
 
-const insertCommonName = db.prepare(`
+const insertCommonName = db.prepare(/*sql*/`
   INSERT INTO plant_common_names (
     plant_id,
     common_name
@@ -152,7 +152,7 @@ const insertCommonNames = db.transaction(({
   }
 });
 
-const insertBloomColor = db.prepare(`
+const insertBloomColor = db.prepare(/*sql*/`
   INSERT INTO plant_bloom_colors (
     plant_id,
     name,
@@ -196,7 +196,7 @@ const insertBloomColorsForPlant = db.transaction(
     }
   });
 
-const insertDistributionRegion = db.prepare(`
+const insertDistributionRegion = db.prepare(/*sql*/`
     INSERT INTO distribution_regions (
       country_code, state_code
     ) VALUES (
@@ -204,7 +204,7 @@ const insertDistributionRegion = db.prepare(`
     ) RETURNING id;
 `);
 
-const getDistributionRegionID = db.prepare(`SELECT id FROM distribution_regions WHERE country_code = ? AND state_code = ?`);
+const getDistributionRegionID = db.prepare(/*sql*/`SELECT id FROM distribution_regions WHERE country_code = ? AND state_code = ?`);
 
 const upsertDistributionRegion = db.transaction(({
   country_code,
@@ -218,7 +218,7 @@ const upsertDistributionRegion = db.transaction(({
   return insertDistributionRegion.get(country_code, state_code);
 });
 
-const insertPlantDistributionRegion = db.prepare(`
+const insertPlantDistributionRegion = db.prepare(/*sql*/`
   INSERT INTO plant_distribution_regions (
     plant_id,
     region_id
@@ -228,7 +228,7 @@ const insertPlantDistributionRegion = db.prepare(`
   );
 `);
 
-const insertIntoFTS = db.prepare(`
+const insertIntoFTS = db.prepare(/*sql*/`
   INSERT INTO plant_name_fts (plant_id, common_name, scientific_name)
   VALUES (@plant_id, @common_name, @scientific_name)
 `);
@@ -334,6 +334,9 @@ const plantDataEntries = await Promise.all(
 );
 
 insertPlantEntries(plantDataEntries);
+
+// Optimize the FTS index
+db.exec("INSERT INTO plant_name_fts(plant_name_fts) VALUES('optimize');");
 
 db.exec("ANALYZE;");
 // Set journal mode back to DELETE so it can be loaded in the browser
