@@ -1,7 +1,10 @@
+/**
+ * @typedef {import("@sqlite.org/sqlite-wasm")} SqliteModule;
+ * @typedef {import("@sqlite.org/sqlite-wasm").Database} Database;
+ * @typedef {import("@sqlite.org/sqlite-wasm").PreparedStatement} PreparedStatement;
+ */
+
 const getDB = async () => {
-  /**
-   * @typedef {import("@sqlite.org/sqlite-wasm")} SqliteModule;
-   */
 
   /**
    * @type {SqliteModule}
@@ -42,8 +45,31 @@ const getDB = async () => {
  */
 
 window.customElements.define("search-bar", class SearchBarElement extends HTMLElement {
+  /**
+   * @type {Database | null}
+   */
   static DB = null;
+  /**
+   * @type {Promise<Database> | null}
+   */
   static DB_PROMISE = null;
+
+  static SEARCH_QUERY_STRING = `SELECT
+    plants.path as path,
+    plants.scientific_name as scientific_name,
+    MAX(plant_name_fts.common_name) as matching_common_name,
+    MAX(plant_common_names.common_name) as common_name
+  from plant_name_fts(?)
+  JOIN plants on plant_name_fts.plant_id = plants.id
+  JOIN plant_common_names on plant_name_fts.plant_id = plant_common_names.plant_id
+  GROUP BY plants.path
+  ORDER BY rank
+  LIMIT 16`;
+
+  /**
+   * @type {PreparedStatement | null}
+   */
+  static PREPARED_SEARCH_QUERY = null;
 
   static styles = /*css*/`
     search-bar {
@@ -62,7 +88,6 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       width: 100%;
       border-end-start-radius: 8px;
       border-end-end-radius: 8px;
-      height: 100px;
       background: white;
       border: 1px solid black;
     }
@@ -102,20 +127,6 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     form.addEventListener("submit", this.onSubmitSearch);
   }
 
-  /**
-   * @param {string} searchString
-   */
-  static getSearchDBQuery = (searchString) => `SELECT
-  plants.path as path,
-  plants.scientific_name as scientific_name,
-  MAX(plant_name_fts.common_name) as matching_common_name,
-  MAX(plant_common_names.common_name) as common_name
-from plant_name_fts('${searchString}')
-JOIN plants on plant_name_fts.plant_id = plants.id
-JOIN plant_common_names on plant_name_fts.plant_id = plant_common_names.plant_id
-GROUP BY plants.path
-ORDER BY rank
-LIMIT 16`;
 
   /**
    *
@@ -123,6 +134,23 @@ LIMIT 16`;
    */
   onSubmitSearch = async (evt) => {
     evt.preventDefault();
+
+    const searchResultsListElement = this.querySelector("#search-results");
+    if (!searchResultsListElement) {
+      console.error("Could not find #search-results element");
+      return;
+    }
+
+    const formElement = /** @type {HTMLFormElement} */ (evt.target);
+
+    const formData = new FormData(formElement);
+    const queryString = formData.get("query").toString().trim();
+
+    if (!queryString) {
+      searchResultsListElement.replaceChildren();
+      return;
+    }
+
     let db = SearchBarElement.DB;
     if (!db) {
       SearchBarElement.DB_PROMISE ??= getDB().then((database) => {
@@ -132,20 +160,8 @@ LIMIT 16`;
       db = await SearchBarElement.DB_PROMISE;
     }
 
-    const formElement = /** @type {HTMLFormElement} */ (evt.target);
+    const results = /** @type {SearchResult[]} */(db.selectObjects(SearchBarElement.SEARCH_QUERY_STRING, queryString));
 
-    const formData = new FormData(formElement);
-    const query = formData.get("query").toString().trim();
-
-    /**
-     * @type {SearchResult[]}
-     */
-    const results = db.selectObjects(SearchBarElement.getSearchDBQuery(query));
-    const searchResultsListElement = this.querySelector("#search-results");
-    if (!searchResultsListElement) {
-      console.error("Could not find #search-results element");
-      return;
-    }
     const newSearchResultNodes = results.map((result) => {
       const listItem = document.createElement("li");
       const link = document.createElement("a");
