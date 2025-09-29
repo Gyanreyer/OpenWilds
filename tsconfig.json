@@ -6,6 +6,7 @@
     "baseUrl": ".",
     "target": "ESNext",
     "module": "es2022",
+    "strict": true,
     "moduleResolution": "node",
     "paths": {
       "#site-lib/*": ["./site/_lib/*"],

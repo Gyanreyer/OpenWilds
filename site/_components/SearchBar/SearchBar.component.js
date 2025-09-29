@@ -5,9 +5,24 @@ import { bundle } from "#site-lib/bundle.js";
 export function SearchBar() {
   return html`
     <search-bar>
-      <form>
-        <input type="text" name="query" placeholder="Search..." />
+      <form role="search">
+        <input type="text" name="query" placeholder="Search..." autocomplete="off"
+          role="combobox"
+          aria-activedescendant=""
+          aria-autocomplete="list"
+          aria-expanded="false"
+          aria-controls="search-results"
+          aria-label="Search"
+          id="search-input"
+        />
       </form>
+      <div id="search-results-container">
+        <ul id="search-results"
+          role="listbox"
+          aria-label="Search results"
+          aria-labelledby="search-input"
+        ></ul>
+      </div>
     </search-bar>
   `;
 }
