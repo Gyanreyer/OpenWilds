@@ -8,6 +8,7 @@
     "module": "es2022",
     "strict": true,
     "moduleResolution": "node",
+    "maxNodeModuleJsDepth": 1,
     "paths": {
       "#site-lib/*": ["./site/_lib/*"],
       "#site-components/*": ["./site/_components/*"],

@@ -11,12 +11,13 @@ import {
   resolve,
 } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { styleText } from 'node:util';
 
 import { bundleSrcPrefix, bundleSrcPrefixLength, inlinedBundleRegex, inlinedWildcardBundle as inlinedWildCardBundle, WILDCARD_BUNDLE_NAME } from '#site-lib/bundle.js';
 import { renderComponent } from '#site-lib/renderComponent.js';
 
 /**
- * @import { UserConfig } from '@11ty/eleventy';
+ * @import UserConfig from '@11ty/eleventy/src/UserConfig.js';
  * @import { DefaultTreeAdapterTypes as Parse5Types } from 'parse5';
  * @import { Component } from '#site-lib/renderComponent.js';
  */
@@ -139,6 +140,9 @@ export default function (eleventyConfig) {
   eleventyConfig.addExtension(["page.js"], {
     key: "page.js",
     useJavaScriptImport: true,
+    /**
+     * @param {string} inputPath
+     */
     async getInstanceFromInputPath(inputPath) {
       const mod = await import(inputPath);
       return {
@@ -189,7 +193,7 @@ export default function (eleventyConfig) {
           jsDependencies: renderedJSDeps,
         } = renderComponent(pageComponent, data);
 
-        this.addDependencies(inputPath, [...renderedCSSDeps, ...renderedJSDeps]);
+        /** @type {any} */(this).addDependencies(inputPath, [...renderedCSSDeps, ...renderedJSDeps]);
 
         // Set of JS bundles which were used on this page but haven't been inserted into script tags yet
         const unimportedJSBundleNameSet = new Set(Object.keys(renderedJSBundles));
@@ -297,15 +301,17 @@ export default function (eleventyConfig) {
           (node) => node.tagName === "html"
         );
 
-        /**
-         * @type {Parse5Types.ParentNode}
-         */
-        const newHeadTag = defaultTreeAdapter.createElement("head", parse5HTML.NS.HTML, []);
-        for (const headNode of Object.values(deduplicatedHeadNodes)) {
-          defaultTreeAdapter.appendChild(newHeadTag, headNode);
+        if (rootHTMLTag) {
+          /**
+           * @type {Parse5Types.ParentNode}
+           */
+          const newHeadTag = defaultTreeAdapter.createElement("head", parse5HTML.NS.HTML, []);
+          for (const headNode of Object.values(deduplicatedHeadNodes)) {
+            defaultTreeAdapter.appendChild(newHeadTag, headNode);
+          }
+          rootHTMLTag.childNodes.unshift(newHeadTag);
+          newHeadTag.parentNode = rootHTMLTag;
         }
-        rootHTMLTag.childNodes.unshift(newHeadTag);
-        newHeadTag.parentNode = rootHTMLTag;
 
         // Clear head nodes object for garbage collection
         deduplicatedHeadNodes = {};
@@ -323,6 +329,10 @@ export default function (eleventyConfig) {
         const handleLinkNode = (node) => {
           const relAttr = node.attrs.find((attr) => attr.name === "rel") ?? null;
 
+          if (relAttr === null) {
+            return TRANSFORM_ACTIONS.CONTINUE;
+          }
+
           let isPreloadLink = false;
           let isLazyImportPreloadLink = false;
 
@@ -330,11 +340,11 @@ export default function (eleventyConfig) {
             isPreloadLink = true;
             // Stylesheets maybe be imported via preload links, but only if they have `as="style"`
             const asAttr = node.attrs.find((attr) => attr.name === "as") ?? null;
-            if (asAttr.value !== "style") {
+            if (asAttr && asAttr.value !== "style") {
               return TRANSFORM_ACTIONS.CONTINUE;
             }
             const onloadAttr = node.attrs.find((attr) => attr.name === "onload") ?? null;
-            isLazyImportPreloadLink = Boolean(onloadAttr) && lazyPreloadOnloadRegex.test(onloadAttr.value);
+            isLazyImportPreloadLink = onloadAttr ? lazyPreloadOnloadRegex.test(onloadAttr.value) : false;
           } else if (relAttr.value !== "stylesheet") {
             return TRANSFORM_ACTIONS.CONTINUE;
           }
@@ -581,6 +591,10 @@ export default function (eleventyConfig) {
         const wildCardCSSBundleNames = Array.from(unimportedCSSBundleNameSet);
 
         for (const wildCardLinkNode of wildCardCSSLinkNodes) {
+          if (!wildCardLinkNode.parentNode) {
+            continue;
+          }
+
           const nodeIndex = wildCardLinkNode.parentNode.childNodes.indexOf(wildCardLinkNode);
           const newNodes = [];
           for (const bundleName of wildCardCSSBundleNames) {
@@ -596,7 +610,14 @@ export default function (eleventyConfig) {
               ...wildCardLinkNode,
             };
             const hrefAttr = newNode.attrs.find((attr) => attr.name === "href");
-            hrefAttr.value = getCSSBundleHref(bundleName);
+            if (hrefAttr) {
+              hrefAttr.value = getCSSBundleHref(bundleName);
+            } else {
+              newNode.attrs.push({
+                name: "href",
+                value: getCSSBundleHref(bundleName),
+              });
+            }
 
             newNodes.push(newNode);
           }
@@ -623,6 +644,10 @@ export default function (eleventyConfig) {
         const wildCardJSBundleNames = Array.from(unimportedJSBundleNameSet);
 
         for (const scriptNode of wildCardJSScriptImportNodes) {
+          if (!scriptNode.parentNode) {
+            continue;
+          }
+
           const nodeIndex = scriptNode.parentNode.childNodes.indexOf(scriptNode);
           const newNodes = [];
           for (const bundleName of wildCardJSBundleNames) {
@@ -637,7 +662,14 @@ export default function (eleventyConfig) {
               ...scriptNode,
             };
             const srcAttr = newNode.attrs.find((attr) => attr.name === "src");
-            srcAttr.value = getJSBundleSrc(bundleName);
+            if (srcAttr) {
+              srcAttr.value = getJSBundleSrc(bundleName);
+            } else {
+              newNode.attrs.push({
+                name: "src",
+                value: getJSBundleSrc(bundleName),
+              });
+            }
 
             newNodes.push(newNode);
           }
@@ -733,109 +765,155 @@ export default function (eleventyConfig) {
     },
   });
 
-  eleventyConfig.on("eleventy.before", async ({
-    directories: {
-      input
-    },
-  }) => {
-    process.env.__ELEVENTY_INPUT_DIR__ = input;
-  });
+  eleventyConfig.on("eleventy.before",
+    /**
+     * @param {{
+     *  directories: {
+     *   input: string;
+     *  }; 
+     * }} params 
+     */
+    async ({
+      directories: {
+        input
+      },
+    }) => {
+      process.env.__ELEVENTY_INPUT_DIR__ = input;
+    });
 
-  eleventyConfig.on("eleventy.after", async (
-    { directories: {
-      output
-    },
-    }
-  ) => {
-    await Promise.allSettled(
-      Object.entries(globalCssBundles).map(async ([bundleName, cssChunkSet]) => {
-        const cssContent = Array.from(cssChunkSet.values()).join("");
-        if (cssContent.length === 0) {
-          return;
-        }
+  eleventyConfig.on("eleventy.after",
+    /**
+     * @param {{
+     *  directories: {
+     *    output: string;
+     *  };
+     * }} params
+     */
+    async (
+      { directories: {
+        output
+      },
+      }
+    ) => {
+      await Promise.allSettled(
+        Object.entries(globalCssBundles).map(async ([bundleName, cssChunkSet]) => {
+          const cssContent = Array.from(cssChunkSet.values()).join("");
+          if (cssContent.length === 0) {
+            return;
+          }
 
-        /**
-         * @type {Uint8Array}
-         */
-        let code;
+          /**
+           * @type {Uint8Array}
+           */
+          let code;
 
-        try {
-          ({ code } = await transformCSS({
-            filename: `${bundleName}.css`,
-            code: encoder.encode(cssContent),
-            minify: true,
-            include: Features.Nesting,
-          }));
-        } catch (err) {
-          console.error("Error processing CSS bundle", bundleName, ":", err);
-          throw new Error("Error processing CSS bundle " + bundleName + ": " + err.message);
-        }
+          try {
+            ({ code } = await transformCSS({
+              filename: `${bundleName}.css`,
+              code: encoder.encode(cssContent),
+              minify: true,
+              include: Features.Nesting,
+            }));
+          } catch (err) {
+            console.error(`Error processing CSS bundle ${bundleName}:`, err);
+            throw new Error(`Error processing CSS bundle ${bundleName}`, {
+              cause: err,
+            });
+          }
 
-        const outputDir = resolve(join(output, "css"));
+          const outputDir = resolve(join(output, "css"));
 
-        try {
-          await access(outputDir);
-        } catch (err) {
-          await mkdir(outputDir, { recursive: true });
-        }
+          try {
+            await access(outputDir);
+          } catch (err) {
+            await mkdir(outputDir, { recursive: true });
+          }
 
-        const outputFilePath = join(outputDir, `${bundleName}.css`);
+          const outputFilePath = join(outputDir, `${bundleName}.css`);
 
-        console.log("Writing CSS bundle", bundleName, "to", outputFilePath);
+          console.log("Writing CSS bundle", bundleName, "to", outputFilePath);
 
-        await writeFile(outputFilePath, code, "utf8");
-      })
-    );
+          await writeFile(outputFilePath, code, "utf8");
+        })
+      );
 
-    await Promise.allSettled(
-      Object.entries(globalJsBundles).map(async ([bundleName, jsChunkSet]) => {
-        const jsContent = Array.from(jsChunkSet.values()).join("");
-        if (jsContent.length === 0) {
-          return;
-        }
+      await Promise.allSettled(
+        Object.entries(globalJsBundles).map(async ([bundleName, jsChunkSet]) => {
+          const jsContent = Array.from(jsChunkSet.values()).join("");
+          if (jsContent.length === 0) {
+            return;
+          }
 
-        /**
-         * @type {string}
-         */
-        let code;
-        /**
-         * @type {string}
-         */
-        let sourceMap;
+          /**
+           * @type {string}
+           */
+          let code;
+          /**
+           * @type {string}
+           */
+          let sourceMap;
 
-        try {
-          const result = await transformJS(jsContent, {
-            minify: true,
-            target: ["es2020"],
-            format: "esm",
-            sourcemap: "external",
-            sourcefile: `${bundleName}.js`,
-          });
-          code = `${result.code}//# sourceMappingURL=${bundleName}.js.map`;
-          sourceMap = result.map;
-        } catch (err) {
-          console.error("Error processing JS bundle", bundleName, ":", err);
-          throw new Error("Error processing JS bundle " + bundleName + ": " + err.message);
-        }
+          try {
+            const result = await transformJS(jsContent, {
+              minify: true,
+              target: ["es2020"],
+              format: "esm",
+              sourcemap: "external",
+              sourcefile: `${bundleName}.js`,
+            });
+            code = `${result.code}//# sourceMappingURL=${bundleName}.js.map`;
+            sourceMap = result.map;
+          } catch (err) {
+            if (err instanceof Error && err.stack) {
+              console.error(`${styleText("red", `Error processing JS bundle "${bundleName}"`)}:\n${styleText("yellow", err.message.replace(/^/gm, "  "))}`);
+              // Parse line number and column from esbuild error stack and log lines above and below for context,
+              // highlighting the specified column.
+              const stackLines = err.stack.split("\n").slice(0, 2);
+              const lineColMatch = stackLines[1].match(/:(\d+):(\d+)/);
+              if (lineColMatch) {
+                const lineNum = parseInt(lineColMatch[1], 10);
+                const colNum = parseInt(lineColMatch[2], 10);
+                const jsContentLines = jsContent.split("\n");
+                const contextRadius = 2;
+                const startLine = Math.max(0, lineNum - contextRadius - 1);
+                const endLine = Math.min(jsContentLines.length, lineNum + contextRadius);
+                for (let i = startLine; i < endLine; ++i) {
+                  const isErrorLine = (i + 1 === lineNum);
+                  const lineIndicator = isErrorLine ? ">" : " ";
+                  const lineContent = jsContentLines[i];
+                  console.error(styleText(isErrorLine ? "white" : "dim", `${lineIndicator} ${i + 1} | ${lineContent}`));
+                  if (i + 1 === lineNum) {
+                    console.error(styleText("white", " ".repeat(colNum + (`${i + 1} | `).length + 1) + "^"));
+                  }
+                }
+                console.log("");
+              }
+            } else {
+              console.error(`Unknown error processing JS bundle ${bundleName}:`, err);
+            }
+            throw new Error(`Error processing JS bundle ${bundleName}`, {
+              cause: err,
+            });
+          }
 
-        const outputDir = resolve(join(output, "js"));
+          const outputDir = resolve(join(output, "js"));
 
-        try {
-          await access(outputDir);
-        } catch (err) {
-          await mkdir(outputDir, { recursive: true });
-        }
+          try {
+            await access(outputDir);
+          } catch (err) {
+            await mkdir(outputDir, { recursive: true });
+          }
 
-        const outputFilePath = join(outputDir, `${bundleName}.js`);
-        const outputSourceMapPath = join(outputDir, `${bundleName}.js.map`);
+          const outputFilePath = join(outputDir, `${bundleName}.js`);
+          const outputSourceMapPath = join(outputDir, `${bundleName}.js.map`);
 
-        console.log("Writing JS bundle", bundleName, "to", outputFilePath);
+          console.log("Writing JS bundle", bundleName, "to", outputFilePath);
 
-        await writeFile(outputFilePath, code, "utf8");
-        await writeFile(outputSourceMapPath, sourceMap, "utf8");
-      })
-    );
-  });
+          await writeFile(outputFilePath, code, "utf8");
+          await writeFile(outputSourceMapPath, sourceMap, "utf8");
+        })
+      );
+    });
 
   return {
     dir: {
