@@ -85,6 +85,7 @@ bundle.import = (importPath, bundleName) => {
  */
 export const isBundleObject = (maybeBundleObj) =>
   typeof maybeBundleObj === "object" && maybeBundleObj !== null &&
+  bundleNameSymbol in maybeBundleObj &&
   typeof maybeBundleObj[bundleNameSymbol] === "string";
 
 /**
@@ -93,10 +94,11 @@ export const isBundleObject = (maybeBundleObj) =>
  */
 export const isBundleImportObject = (maybeBundleImportObj) =>
   typeof maybeBundleImportObj === "object" && maybeBundleImportObj !== null &&
+  importFilePathSymbol in maybeBundleImportObj &&
   typeof maybeBundleImportObj[importFilePathSymbol] === "string";
 
 /**
- * @param {BundleObject} bundleObj
+ * @param {BundleObject | BundleImportObject} bundleObj
  * @returns {string | undefined}
  */
 export const getBundleName = (bundleObj) => bundleObj[bundleNameSymbol];

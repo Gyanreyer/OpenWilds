@@ -35,20 +35,27 @@ export function js(strings, ...values) {
       const value = values[i];
 
       if (isBundleImportObject(value)) {
-        jsBundleDependencies.add(getBundleImportFilePath(value));
+        const importFilePath = getBundleImportFilePath(value);
+        jsBundleDependencies.add(importFilePath);
         let importBundleName = currentBundleName;
-        if (isBundleObject(value)) {
-          importBundleName = getBundleName(value);
+        const bundleName = getBundleName(value);
+        if (bundleName !== undefined) {
+          importBundleName = bundleName;
         }
         try {
           const fileContents = getBundleImportFileContents(value);
           const importBundleArray = (rawJSBundles[importBundleName] ??= []);
           importBundleArray.push(fileContents);
         } catch (err) {
-          throw new Error(`bundle.import failed to import file at path "${importBundleName}": ${err.message}`);
+          throw new Error(`bundle.import failed to import file at path "${importFilePath}"`, {
+            cause: err,
+          });
         }
       } else if (isBundleObject(value)) {
-        currentBundleName = getBundleName(value);
+        const bundleName = getBundleName(value);
+        if (bundleName !== undefined) {
+          currentBundleName = bundleName;
+        }
       } else if (value !== undefined && value !== null) {
         // If the value is not a bundle object, append it to the current bundle as a string
         currentBundleArray.push(String(value));

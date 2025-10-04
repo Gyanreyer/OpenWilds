@@ -17,7 +17,12 @@ const getDB = async () => {
   });
 
   // Load the gzipped database file, decompress it, and deserialize it into the SQLite instance
-  const decompressedDataStream = await fetch("/OpenWilds.db.gz").then(res => res.body?.pipeThrough(new DecompressionStream("gzip")));
+  const decompressedDataStream = await fetch(`/OpenWilds.db.gz?v=${/** @type {any} */(window).__DB_VERSION}`, {
+    headers: {
+      // Cache the database indefinitely, since it is versioned by the app version
+      "Cache-Control": "public, max-age=31536000, immutable",
+    }
+  }).then(res => res.body?.pipeThrough(new DecompressionStream("gzip")));
   if (!decompressedDataStream) {
     throw new Error("Could not fetch or decompress database");
   }
@@ -105,6 +110,35 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       /* Hide if no search results */
       display: none;
     }
+
+    #search-results {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 400px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      row-gap: 4px;
+    }
+
+    #search-results li {
+      border-top: 1px solid #ccc;
+    }
+
+    #search-results li:first-child {
+      border-top: none;
+    }
+
+    #search-results li a {
+      display: block;
+      text-decoration: none;
+      padding: 4px;
+    }
+
+    #search-results li a[aria-selected="true"] {
+      background-color: #02e702ff;
+    }
   `;
 
   static {
@@ -113,6 +147,59 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     document.adoptedStyleSheets.push(stylesheet);
   }
 
+  /**
+   * @param {SearchResult} result
+   * @param {number} index
+   * @param {boolean} isSelected
+   */
+  static getSearchResultHTML(result, index, isSelected) {
+    return /* html */`<li role="presentation">
+      <a
+        role="option"
+        href="${result.path}"
+        data-i="${index}"
+        tabindex="${isSelected ? "0" : "-1"}"
+        aria-selected="${isSelected ? "true" : "false"}"
+        class="search-result"
+        id="result-${result.path}"
+      >
+        ${result.matching_common_name || result.primary_common_name} (${result.scientific_name})
+      </a>
+    </li>`;
+  }
+
+  /**
+   * Allowed characters in search string:
+   * - Non-ASCII range characters (i.e. unicode codepoints greater than 127), or
+   * - One of the 52 upper and lower case ASCII characters, or
+   */
+  static ILLEGAL_SEARCH_STRING_CHAR_REGEX = /[^\w\s]/;
+  static WHITESPACE_REGEX = /\s+/;
+
+  /**
+   * @param {string} searchString
+   */
+  static sanitizeSearchString(searchString) {
+    let sanitizedString = '"';
+
+    for (let i = 0; i < searchString.length; i++) {
+      const char = searchString.charAt(i);
+
+      if (this.ILLEGAL_SEARCH_STRING_CHAR_REGEX.test(char)) {
+        // Replace illegal characters with spaces
+        sanitizedString += " ";
+      } else if (this.WHITESPACE_REGEX.test(char)) {
+        // Replace whitespace characters with single spaces
+        sanitizedString += " ";
+      } else {
+        sanitizedString += char;
+      }
+    }
+
+    sanitizedString += '"';
+
+    return `"${sanitizedString.split(this.WHITESPACE_REGEX).filter(s => s.length > 0).join('" "').trim()}"`;
+  }
 
   connectedCallback() {
     this.addEventListener("keydown", this.onkeydown);
@@ -126,6 +213,7 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
         this.dataset.expanded = "false";
       }
     });
+    this.inputElement.addEventListener("input", this.onSearchInputChange);
     this.formElement.addEventListener("submit", this.onSubmitSearch);
   }
 
@@ -290,6 +378,66 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     }
   }
 
+  /**
+   * @type {number | null}
+   */
+  #debounceTimeoutID = null;
+  #isDebouncedCallInProgress = false;
+
+  onSearchInputChange = () => {
+    if (!SearchBarElement.DB && !SearchBarElement.DB_PROMISE) {
+      // Start loading the database on first input
+      SearchBarElement.DB_PROMISE = getDB().then((database) => {
+        SearchBarElement.DB = database;
+        return database;
+      });
+    }
+
+    if (this.#debounceTimeoutID !== null) {
+      window.clearTimeout(this.#debounceTimeoutID);
+    }
+    this.#debounceTimeoutID = window.setTimeout(() => {
+      this.#debounceTimeoutID = null;
+      if (this.#isDebouncedCallInProgress) {
+        // Retry in .3s if a call is currently still in progress
+        this.onSearchInputChange();
+        return;
+      }
+      this.#isDebouncedCallInProgress = true;
+      this.debouncedOnSearchInputChange().finally(() => {
+        this.#isDebouncedCallInProgress = false;
+      });
+    }, 300);
+  }
+
+  debouncedOnSearchInputChange = async () => {
+    const searchInputElement = this.inputElement;
+    const searchString = SearchBarElement.sanitizeSearchString(searchInputElement.value);
+
+    const searchResultsListElement = this.searchResultsListElement;
+
+    if (searchString.length < 3) {
+      // Our search tokenizer uses trigrams, so we need at least 3 characters to search
+      searchResultsListElement.innerHTML = "";
+      return;
+    }
+
+    let db = SearchBarElement.DB || await SearchBarElement.DB_PROMISE;
+    if (!db) {
+      console.error("Database is not loaded");
+      return;
+    }
+
+    const results = /** @type {SearchResult[]} */(db.selectObjects(SearchBarElement.SEARCH_QUERY_STRING, searchString));
+
+    if (results.length === 0) {
+      searchResultsListElement.innerHTML = `<li role="presentation">No results found</li>`;
+      return;
+    }
+
+    const newSearchResultHTML = results.map((result, i) => SearchBarElement.getSearchResultHTML(result, i, i === 0)).join("\n");
+    searchResultsListElement.innerHTML = newSearchResultHTML;
+  }
 
   /**
    *
@@ -297,48 +445,6 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
    */
   onSubmitSearch = async (evt) => {
     evt.preventDefault();
-
-    const searchResultsListElement = this.querySelector("#search-results");
-    if (!searchResultsListElement) {
-      console.error("Could not find #search-results element");
-      return;
-    }
-
-    const formElement = this.formElement;
-
-    const formData = new FormData(formElement);
-    const queryString = formData.get("query")?.toString().trim();
-
-    if (!queryString) {
-      searchResultsListElement.replaceChildren();
-      return;
-    }
-
-    let db = SearchBarElement.DB;
-    if (!db) {
-      SearchBarElement.DB_PROMISE ??= getDB().then((database) => {
-        SearchBarElement.DB = database;
-        return database;
-      });
-      db = await SearchBarElement.DB_PROMISE;
-    }
-
-    const results = /** @type {SearchResult[]} */(db.selectObjects(SearchBarElement.SEARCH_QUERY_STRING, queryString));
-
-    const newSearchResultNodes = results.map((result, i) => {
-      const listItem = document.createElement("li");
-      listItem.role = "presentation";
-      const link = document.createElement("a");
-      link.role = "option";
-      link.href = result.path;
-      link.textContent = `${result.matching_common_name || result.primary_common_name} (${result.scientific_name})`;
-      link.dataset.i = String(i);
-      link.tabIndex = -1;
-      link.className = "search-result";
-      link.id = `search-result-${result.path}`
-      listItem.appendChild(link);
-      return listItem;
-    });
-    searchResultsListElement.replaceChildren(...newSearchResultNodes);
+    this.getSelectedSearchResult()?.click();
   }
 });

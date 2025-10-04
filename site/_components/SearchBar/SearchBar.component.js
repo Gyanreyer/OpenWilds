@@ -1,6 +1,8 @@
 import { html } from "#site-lib/html.js";
 import { js } from "#site-lib/js.js";
 import { bundle } from "#site-lib/bundle.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 export function SearchBar() {
   return html`
@@ -27,6 +29,10 @@ export function SearchBar() {
   `;
 }
 
+const packageJSONPath = fileURLToPath(import.meta.resolve("../../../package.json"));
+const packageJSONVersion = JSON.stringify(JSON.parse(readFileSync(packageJSONPath, "utf-8")).version);
+
 SearchBar.js = js`
+  window.__SEARCH_DB_VERSION = ${packageJSONVersion};
   ${bundle.import("./search-bar.js")}
 `;
