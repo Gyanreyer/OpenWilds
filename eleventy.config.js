@@ -122,15 +122,23 @@ export default function (eleventyConfig) {
     "site/public": "/",
   });
 
-  eleventyConfig.addTemplateFormats("page.js");
   eleventyConfig.addWatchTarget("site/**/*");
+  eleventyConfig.addTemplateFormats("page.js");
 
   /**
-   * @type {Record<string, Set<string>>}
+   * @type {{
+   *  [pageInputPath: string]: {
+   *    [bundleName: string]: Set<string>;
+   *  }
+   * }}
    */
   let globalCssBundles = {};
   /**
-   * @type {Record<string, Set<string>>}
+   * @type {{
+   *  [pageInputPath: string]: {
+   *    [bundleName: string]: Set<string>;
+   *  }
+   * }}
    */
   let globalJsBundles = {};
 
@@ -151,12 +159,6 @@ export default function (eleventyConfig) {
       };
     },
     getData: ["config"],
-    init() {
-      // Clear CSS and JS bundles on init so we don't accumulate cruft from past builds
-      // when in watch mode.
-      globalCssBundles = {}
-      globalJsBundles = {};
-    },
     /**
      * @param {Object} compileContext 
      * @param {Component} compileContext.pageComponent
@@ -165,6 +167,9 @@ export default function (eleventyConfig) {
      * @returns {(data: any) => Promise<string>}
      */
     compile({ pageComponent }, inputPath) {
+      globalCssBundles[inputPath] = {};
+      globalJsBundles[inputPath] = {};
+
       /**
        * Object to cache results from processing inline bundles so we don't re-process the same
        * content multiple times. Doing this on the page template level because that tends to be where
@@ -375,8 +380,8 @@ export default function (eleventyConfig) {
             return TRANSFORM_ACTIONS.REMOVE;
           }
 
-          globalCssBundles[globalImportBundleName] ??= new Set();
-          globalCssBundles[globalImportBundleName].add(cssContent);
+          globalCssBundles[inputPath][globalImportBundleName] ??= new Set();
+          globalCssBundles[inputPath][globalImportBundleName].add(cssContent);
 
           hrefAttr.value = getCSSBundleHref(globalImportBundleName);
 
@@ -470,7 +475,7 @@ export default function (eleventyConfig) {
         /**
          * <script> tags which we need to return to to process their contents once
          * all bundles are resolved
-         * 
+         *
          * @type {Set<Parse5Types.Element>}
          */
         const inlineScriptNodesToProcess = new Set();
@@ -497,8 +502,8 @@ export default function (eleventyConfig) {
                   return TRANSFORM_ACTIONS.REMOVE;
                 }
 
-                globalJsBundles[globalImportBundleName] ??= new Set();
-                globalJsBundles[globalImportBundleName].add(jsContent);
+                globalJsBundles[inputPath][globalImportBundleName] ??= new Set();
+                globalJsBundles[inputPath][globalImportBundleName].add(jsContent);
 
                 srcAttr.value = getJSBundleSrc(globalImportBundleName);
               }
@@ -603,8 +608,8 @@ export default function (eleventyConfig) {
               continue;
             }
 
-            globalCssBundles[bundleName] ??= new Set();
-            globalCssBundles[bundleName].add(cssContent);
+            globalCssBundles[inputPath][bundleName] ??= new Set();
+            globalCssBundles[inputPath][bundleName].add(cssContent);
 
             const newNode = {
               ...wildCardLinkNode,
@@ -656,8 +661,8 @@ export default function (eleventyConfig) {
               continue;
             }
 
-            globalJsBundles[bundleName] ??= new Set();
-            globalJsBundles[bundleName].add(jsContent);
+            globalJsBundles[inputPath][bundleName] ??= new Set();
+            globalJsBundles[inputPath][bundleName].add(jsContent);
             const newNode = {
               ...scriptNode,
             };
@@ -795,8 +800,34 @@ export default function (eleventyConfig) {
       },
       }
     ) => {
+      /**
+       * @type {Record<string, Set<string>>}
+       */
+      const combinedJsBundles = {};
+      for (const inputPath in globalJsBundles) {
+        for (const [bundleName, jsChunkSet] of Object.entries(globalJsBundles[inputPath])) {
+          combinedJsBundles[bundleName] ??= new Set();
+          for (const jsChunk of jsChunkSet) {
+            combinedJsBundles[bundleName].add(jsChunk);
+          }
+        }
+      }
+
+      /**
+       * @type {Record<string, Set<string>>}
+       */
+      const combinedCssBundles = {};
+      for (const inputPath in globalCssBundles) {
+        for (const [bundleName, cssChunkSet] of Object.entries(globalCssBundles[inputPath])) {
+          combinedCssBundles[bundleName] ??= new Set();
+          for (const cssChunk of cssChunkSet) {
+            combinedCssBundles[bundleName].add(cssChunk);
+          }
+        }
+      }
+
       await Promise.allSettled(
-        Object.entries(globalCssBundles).map(async ([bundleName, cssChunkSet]) => {
+        Object.entries(combinedCssBundles).map(async ([bundleName, cssChunkSet]) => {
           const cssContent = Array.from(cssChunkSet.values()).join("");
           if (cssContent.length === 0) {
             return;
@@ -838,7 +869,7 @@ export default function (eleventyConfig) {
       );
 
       await Promise.allSettled(
-        Object.entries(globalJsBundles).map(async ([bundleName, jsChunkSet]) => {
+        Object.entries(combinedJsBundles).map(async ([bundleName, jsChunkSet]) => {
           const jsContent = Array.from(jsChunkSet.values()).join("");
           if (jsContent.length === 0) {
             return;
