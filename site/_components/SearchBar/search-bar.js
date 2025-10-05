@@ -119,11 +119,11 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      row-gap: 4px;
+      background: var(--background);
     }
 
     #search-results li {
-      border-top: 1px solid #ccc;
+      border-top: 1px solid var(--text-secondary);
     }
 
     #search-results li:first-child {
@@ -134,10 +134,44 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       display: block;
       text-decoration: none;
       padding: 4px;
+      color: var(--text-primary);
+      transition-duration: 0.1s;
+      transition-property: background-color, opacity;
     }
 
     #search-results li a[aria-selected="true"] {
-      background-color: #02e702ff;
+      background-color: var(--brand-primary);
+      font-weight: 600;
+    }
+
+    #search-results li a span {
+      display: inline-block;
+      transition: transform 0.1s ease-in-out;
+    }
+
+    #search-results li a[aria-selected="true"] span {
+      transform: translateX(1.5ch);
+    }
+
+    #search-results li a::before {
+      content: "→";
+      position: absolute;
+      opacity: 0;
+      transform: translateX(-1.5ch);
+      transition-duration: 0.1s;
+      transition-property: opacity, transform;
+    }
+    #search-results li a[aria-selected="true"]::before {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    #search-results li a:hover {
+      background-color: var(--brand-secondary);
+    }
+
+    #search-results:has(li a:hover) li a[aria-selected="true"]:not(:hover) {
+      opacity: 0.4;
     }
   `;
 
@@ -163,7 +197,7 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
         class="search-result"
         id="result-${result.path}"
       >
-        ${result.matching_common_name || result.primary_common_name} (${result.scientific_name})
+        <span>${result.matching_common_name || result.primary_common_name} (${result.scientific_name})</span>
       </a>
     </li>`;
   }

@@ -1,0 +1,27 @@
+:root {
+  font-family: system-ui, sans-serif;
+  --brand-primary: #a1b57c;
+  --brand-secondary: #c9d5a0;
+  --accent-primary: #dad2c7;
+  --accent-secondary: #d4a656;
+  --positive: #89b0ae;
+  --negative: #c97e63;
+  --text-primary: #2e3b32;
+  --text-secondary: #5f6a6a;
+  --background: #faf9f6;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+body {
+  margin: 0;
+}

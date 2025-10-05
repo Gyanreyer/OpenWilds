@@ -81,4 +81,5 @@ export interface PlantData {
     CA?: CAProvinceAbbreviation[];
   };
   images: ImageData[];
+  permalink: string;
 }

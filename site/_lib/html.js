@@ -24,19 +24,28 @@ const voidTagNames = {
   'wbr': true,
 }
 
-const escapeCharactersRegex = /[&<>"']/g;
-
-// escape an attribute
+/**
+ * @type {{[char: string]: string}}
+ */
 const escapedCharacterMap = {
-  '&': 'amp',
-  '<': 'lt',
-  '>': 'gt',
-  '"': 'quot',
-  "'": 'apos'
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&apos;'
 };
-const escape = (str) => String(str).replace(escapeCharactersRegex, (s) => `&${escapedCharacterMap[s]};`);
+
+const escapeCharactersRegex = new RegExp(`[${Object.keys(escapedCharacterMap).join('')}]`, 'g');
+
+/**
+ * @param {string} str
+ */
+const escape = (str) => String(str).replace(escapeCharactersRegex, (s) => s in escapedCharacterMap ? escapedCharacterMap[s] : s);
 
 const setInnerHTMLAttr = 'dangerouslySetInnerHTML';
+/**
+ * @type {{[attrName: string]: string}}
+ */
 const DOMAttributeNames = {
   className: 'class',
   htmlFor: 'for'
@@ -56,16 +65,18 @@ const DOMAttributeNames = {
  * }} RenderResult
  */
 
-
+/**
+ * @typedef {Array<string | RenderResult>} Children
+ */
 
 /**
- * @param {unknown} tagNameOrComponent 
- * @returns {tagNameOrComponent is ((...any) => RenderResult) & { css?: ()=>CSSResult; js?: ()=>JSResult }}
+ * @param {unknown} tagNameOrComponent
+ * @returns {tagNameOrComponent is ((...args: any[]) => RenderResult) & { css?: ()=>CSSResult; js?: ()=>JSResult }}
  */
 const isNestedComponent = (tagNameOrComponent) => typeof tagNameOrComponent === 'function';
 
 /**
- * @param {unknown} child 
+ * @param {unknown} child
  * @returns {child is RenderResult}
  */
 const isRenderResultChild = (child) => typeof child === 'object' && child !== null && 'html' in child;
@@ -75,6 +86,11 @@ const isRenderResultChild = (child) => typeof child === 'object' && child !== nu
  * This is forked from the vhtml library's implementation.
  * https://github.com/developit/vhtml
  *
+ * @param {string | ((...args: any[]) => RenderResult) & { css?: ()=>CSSResult; js?: ()=>JSResult }} tagNameOrComponent
+ * @param {{
+ *  [key: string]: any;
+ * }} [attrs]
+ * @param {Children} children
  * @returns {RenderResult}
  */
 function h(tagNameOrComponent, attrs, ...children) {
@@ -172,19 +188,22 @@ function h(tagNameOrComponent, attrs, ...children) {
   if (tagNameOrComponent) {
     serializedHTMLStr += '<' + tagNameOrComponent;
     if (attrs) {
-      for (let attrName in attrs) {
+      for (const attrName in attrs) {
         if (attrs[attrName] !== false && attrs[attrName] != null && attrName !== setInnerHTMLAttr) {
-          serializedHTMLStr += ` ${DOMAttributeNames[attrName] ? DOMAttributeNames[attrName] : escape(attrName)}="${escape(attrs[attrName])}"`;
+          serializedHTMLStr += ` ${attrName in DOMAttributeNames ? DOMAttributeNames[attrName] : escape(attrName)}="${escape(attrs[attrName])}"`;
         }
       }
     }
     serializedHTMLStr += '>';
   }
 
-  if (!voidTagNames[tagNameOrComponent]) {
+  if (!(tagNameOrComponent in voidTagNames)) {
     if (attrs[setInnerHTMLAttr]) {
       serializedHTMLStr += attrs[setInnerHTMLAttr].__html;
     } else {
+      /**
+       * @param {Children | Children[number]} children 
+       */
       const addChildrenToSerializedStr = (children) => {
         if (Array.isArray(children)) {
           for (const child of children) {

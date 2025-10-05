@@ -2,6 +2,16 @@ import { bundle } from "#site-lib/bundle.js";
 import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
 
+/**
+ * @import {Children} from "#site-lib/html.js";
+ */
+
+/**
+ * @param {Object} props
+ * @param {string} props.title
+ * @param {string} props.description
+ * @param {Children} props.children
+ */
 export default function BaseLayout({ title = "OpenWilds", description = "OpenWilds Plant Database", children }) {
   return html`
   <html lang="en">
@@ -29,11 +39,5 @@ export default function BaseLayout({ title = "OpenWilds", description = "OpenWil
 }
 
 BaseLayout.css = css`
-  :root {
-    font-family: system-ui, sans-serif;
-  }
-
-  *, *:before, *:after {
-    box-sizing: border-box;
-  }
+  ${bundle.import("./reset.css")}
 `;

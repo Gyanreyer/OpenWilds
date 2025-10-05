@@ -9,6 +9,7 @@
     "strict": true,
     "moduleResolution": "node",
     "maxNodeModuleJsDepth": 1,
+    "allowSyntheticDefaultImports": true,
     "paths": {
       "#site-lib/*": ["./site/_lib/*"],
       "#site-components/*": ["./site/_components/*"],

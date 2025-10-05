@@ -142,6 +142,13 @@ export default function (eleventyConfig) {
    */
   let globalJsBundles = {};
 
+  /**
+   * @type {{
+   *  [filePath: string]: string;
+   * }}
+   */
+  const bundleHashes = {};
+
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -635,7 +642,6 @@ export default function (eleventyConfig) {
             return renderedCSSBundles[bundleName] ? Array.from(renderedCSSBundles[bundleName]).join("\n") : null;
           }).join("\n").trim();
 
-
           const currentStyleTagText = styleNode.childNodes.map((childNode) => defaultTreeAdapter.isTextNode(childNode) ? childNode.value : "").join("").trim();
           const newStyleTagText = currentStyleTagText.replaceAll(
             inlinedWildCardBundle,
@@ -803,19 +809,6 @@ export default function (eleventyConfig) {
       /**
        * @type {Record<string, Set<string>>}
        */
-      const combinedJsBundles = {};
-      for (const inputPath in globalJsBundles) {
-        for (const [bundleName, jsChunkSet] of Object.entries(globalJsBundles[inputPath])) {
-          combinedJsBundles[bundleName] ??= new Set();
-          for (const jsChunk of jsChunkSet) {
-            combinedJsBundles[bundleName].add(jsChunk);
-          }
-        }
-      }
-
-      /**
-       * @type {Record<string, Set<string>>}
-       */
       const combinedCssBundles = {};
       for (const inputPath in globalCssBundles) {
         for (const [bundleName, cssChunkSet] of Object.entries(globalCssBundles[inputPath])) {
@@ -826,12 +819,28 @@ export default function (eleventyConfig) {
         }
       }
 
+      const cssOutputDir = resolve(join(output, "css"));
+      try {
+        await access(cssOutputDir);
+      } catch (err) {
+        await mkdir(cssOutputDir, { recursive: true });
+      }
+
       await Promise.allSettled(
         Object.entries(combinedCssBundles).map(async ([bundleName, cssChunkSet]) => {
           const cssContent = Array.from(cssChunkSet.values()).join("");
           if (cssContent.length === 0) {
             return;
           }
+
+          const outputFilePath = join(cssOutputDir, `${bundleName}.css`);
+
+          const hash = createHash("md5").update(cssContent).digest("hex");
+          if (bundleHashes[outputFilePath] === hash) {
+            // Skip re-bundling if the content hash matches the cached hash
+            return;
+          }
+          bundleHashes[outputFilePath] = hash;
 
           /**
            * @type {Uint8Array}
@@ -852,15 +861,6 @@ export default function (eleventyConfig) {
             });
           }
 
-          const outputDir = resolve(join(output, "css"));
-
-          try {
-            await access(outputDir);
-          } catch (err) {
-            await mkdir(outputDir, { recursive: true });
-          }
-
-          const outputFilePath = join(outputDir, `${bundleName}.css`);
 
           console.log("Writing CSS bundle", bundleName, "to", outputFilePath);
 
@@ -868,12 +868,41 @@ export default function (eleventyConfig) {
         })
       );
 
+      /**
+       * @type {Record<string, Set<string>>}
+       */
+      const combinedJsBundles = {};
+      for (const inputPath in globalJsBundles) {
+        for (const [bundleName, jsChunkSet] of Object.entries(globalJsBundles[inputPath])) {
+          combinedJsBundles[bundleName] ??= new Set();
+          for (const jsChunk of jsChunkSet) {
+            combinedJsBundles[bundleName].add(jsChunk);
+          }
+        }
+      }
+
+      const jsOutputDir = resolve(join(output, "js"));
+      try {
+        await access(jsOutputDir);
+      } catch (err) {
+        await mkdir(jsOutputDir, { recursive: true });
+      }
+
       await Promise.allSettled(
         Object.entries(combinedJsBundles).map(async ([bundleName, jsChunkSet]) => {
           const jsContent = Array.from(jsChunkSet.values()).join("");
           if (jsContent.length === 0) {
             return;
           }
+
+          const outputFilePath = join(jsOutputDir, `${bundleName}.js`);
+
+          const hash = createHash("md5").update(jsContent).digest("hex");
+          if (bundleHashes[outputFilePath] === hash) {
+            // Skip re-bundling if the content hash matches the cached hash
+            return;
+          }
+          bundleHashes[outputFilePath] = hash;
 
           /**
            * @type {string}
@@ -917,6 +946,7 @@ export default function (eleventyConfig) {
                     console.error(styleText("white", " ".repeat(colNum + (`${i + 1} | `).length + 1) + "^"));
                   }
                 }
+                // Log an extra line after the code frame for spacing
                 console.log("");
               }
             } else {
@@ -927,16 +957,7 @@ export default function (eleventyConfig) {
             });
           }
 
-          const outputDir = resolve(join(output, "js"));
-
-          try {
-            await access(outputDir);
-          } catch (err) {
-            await mkdir(outputDir, { recursive: true });
-          }
-
-          const outputFilePath = join(outputDir, `${bundleName}.js`);
-          const outputSourceMapPath = join(outputDir, `${bundleName}.js.map`);
+          const outputSourceMapPath = join(jsOutputDir, `${bundleName}.js.map`);
 
           console.log("Writing JS bundle", bundleName, "to", outputFilePath);
 

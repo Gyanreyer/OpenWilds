@@ -15,7 +15,7 @@ import { bundle } from "#site-lib/bundle.js";
 import { Head } from "#site-lib/components/Head.component.js";
 
 /**
- * @import { PlantData } from "./types/plantData.js"
+ * @import { PlantData } from "./types/plantData.js";
  */
 
 const baseDataFileDirectoryPath = import.meta
@@ -33,43 +33,53 @@ export const config = {
     size: 1,
     alias: "dataEntry",
   },
+  /**
+   * @param {{
+   *  dataEntry: PlantData;
+   * }} data
+   */
   permalink: (data) => data.dataEntry.permalink,
   dataEntries: await Promise.all(
-    dataEntryPaths.map(async (path) => {
-      const fileContents = await readFile(path, "utf8");
+    dataEntryPaths.map(
+      /**
+       * @param {string} path
+       * @returns {Promise<PlantData>}
+       */
+      async (path) => {
+        const fileContents = await readFile(path, "utf8");
 
-      const dataEntryDirectory = path.slice(0, -"data.yml".length);
+        const dataEntryDirectory = path.slice(0, -"data.yml".length);
 
-      const imagePaths = await glob(["images/*.jpg", "images/*.jpeg", "images/*.png", "images/*.webp"], {
-        cwd: dataEntryDirectory,
-        onlyFiles: true,
-        absolute: true,
-      });
+        const imagePaths = await glob(["images/*.jpg", "images/*.jpeg", "images/*.png", "images/*.webp"], {
+          cwd: dataEntryDirectory,
+          onlyFiles: true,
+          absolute: true,
+        });
 
-      const images = await Promise.all(
-        imagePaths.map(async (imagePath) => {
-          const result = await Image(imagePath, eleventyImageConfig);
+        const images = await Promise.all(
+          imagePaths.map(async (imagePath) => {
+            const result = await Image(imagePath, eleventyImageConfig);
 
-          const imageMetdata = JSON.parse(await readFile(
-            `${imagePath}.meta.json`,
-            "utf8"
-          ));
+            const imageMetdata = JSON.parse(await readFile(
+              `${imagePath}.meta.json`,
+              "utf8"
+            ));
 
-          return {
-            ...result,
-            meta: imageMetdata,
-          }
-        })
-      );
+            return {
+              ...result,
+              meta: imageMetdata,
+            }
+          })
+        );
 
-      return {
-        permalink: dataEntryDirectory.slice(
-          baseDataFileDirectoryPath.length,
-        ),
-        images,
-        ...parseYaml(fileContents),
-      };
-    })
+        return {
+          ...parseYaml(fileContents),
+          permalink: dataEntryDirectory.slice(
+            baseDataFileDirectoryPath.length,
+          ),
+          images,
+        };
+      })
   ),
 };
 
@@ -87,9 +97,9 @@ export default function Plant({ dataEntry }) {
       <p aria-description="Scientific name">${dataEntry.scientific_name}</p>
       <ul id="plant-images">
       ${dataEntry.images.map((image) => {
-        const imageTagImage = image.jpeg[image.jpeg.length - 1];
+    const imageTagImage = image.jpeg[image.jpeg.length - 1];
 
-        return html`<li style="aspect-ratio: ${imageTagImage.width} / ${imageTagImage.height}">
+    return html`<li style="aspect-ratio: ${imageTagImage.width} / ${imageTagImage.height}">
         <figure>
         <picture>
           <source type="image/webp" srcset="${image.webp.map((img) => img.srcset).join(",")}" />
@@ -99,7 +109,7 @@ export default function Plant({ dataEntry }) {
         <figcaption>Photo by <a href=${image.meta.creatorURL}>${image.meta.creatorName}</a></figcaption>
         </figure>
         </li>`;
-      })}
+  })}
       </ul>
     </header>
     ${dataEntry.common_names.length > 1 ? html`<section>
