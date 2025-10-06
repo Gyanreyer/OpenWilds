@@ -333,7 +333,6 @@ export default function (eleventyConfig) {
          */
         const wildCardCSSLinkNodes = new Set();
 
-
         /**
          * @param {Parse5Types.Element} node
          * @returns {TransformResult}
@@ -618,9 +617,9 @@ export default function (eleventyConfig) {
             globalCssBundles[inputPath][bundleName] ??= new Set();
             globalCssBundles[inputPath][bundleName].add(cssContent);
 
-            const newNode = {
-              ...wildCardLinkNode,
-            };
+            // Deeply clone so we don't modify the original node
+            const newNode = structuredClone(wildCardLinkNode);
+
             const hrefAttr = newNode.attrs.find((attr) => attr.name === "href");
             if (hrefAttr) {
               hrefAttr.value = getCSSBundleHref(bundleName);
@@ -669,9 +668,9 @@ export default function (eleventyConfig) {
 
             globalJsBundles[inputPath][bundleName] ??= new Set();
             globalJsBundles[inputPath][bundleName].add(jsContent);
-            const newNode = {
-              ...scriptNode,
-            };
+
+            // Deeply clone so we don't modify the original node
+            const newNode = structuredClone(scriptNode);
             const srcAttr = newNode.attrs.find((attr) => attr.name === "src");
             if (srcAttr) {
               srcAttr.value = getJSBundleSrc(bundleName);
