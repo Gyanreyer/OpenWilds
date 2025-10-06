@@ -93,15 +93,25 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     search-bar form input {
       display: block;
       width: 100%;
+      padding: 0.5em;
+      font-size: 1.2rem;
+      line-height: 1.5;
+      border: 1px solid var(--text-secondary);
+      border-radius: 8px;
+
+      &:focus {
+        border-color: var(--brand-primary);
+      }
     }
 
     #search-results-container {
       position: absolute;
       top: 100%;
-      left: 0;
-      width: 100%;
+      left: 8px;
+      width: calc(100% - 16px);
       border-end-start-radius: 8px;
       border-end-end-radius: 8px;
+      overflow: clip;
       background: white;
       border: 1px solid black;
     }
@@ -131,7 +141,9 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     }
 
     #search-results li a {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       text-decoration: none;
       padding: 4px;
       color: var(--text-primary);
@@ -140,34 +152,21 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     }
 
     #search-results li a[aria-selected="true"] {
-      background-color: var(--brand-primary);
+      background-color: var(--positive);
       font-weight: 600;
     }
 
-    #search-results li a span {
-      display: inline-block;
-      transition: transform 0.1s ease-in-out;
-    }
-
-    #search-results li a[aria-selected="true"] span {
-      transform: translateX(1.5ch);
-    }
-
-    #search-results li a::before {
-      content: "→";
-      position: absolute;
+    #search-results li a::after {
+      content: "⏎";
       opacity: 0;
-      transform: translateX(-1.5ch);
-      transition-duration: 0.1s;
-      transition-property: opacity, transform;
+      transition: opacity 0.1s;
     }
-    #search-results li a[aria-selected="true"]::before {
+    #search-results li a[aria-selected="true"]::after {
       opacity: 1;
-      transform: translateX(0);
     }
 
     #search-results li a:hover {
-      background-color: var(--brand-secondary);
+      background-color: var(--positive);
     }
 
     #search-results:has(li a:hover) li a[aria-selected="true"]:not(:hover) {
@@ -397,14 +396,10 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
            * @type {HTMLInputElement | null}
            */
           const inputElement = this.querySelector("form input");
+          // Shift focus back to the input element on Escape
           if (inputElement) {
             inputElement.focus();
             inputElement.setAttribute("aria-activedescendant", "");
-          }
-
-          if (currentSelectedResult) {
-            currentSelectedResult.tabIndex = -1;
-            currentSelectedResult.setAttribute("aria-selected", "false");
           }
           break;
         }

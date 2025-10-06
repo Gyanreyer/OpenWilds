@@ -1,27 +1,81 @@
-:root {
-  font-family: system-ui, sans-serif;
-  --brand-primary: #a1b57c;
-  --brand-secondary: #c9d5a0;
-  --accent-primary: #dad2c7;
-  --accent-secondary: #d4a656;
-  --positive: #89b0ae;
-  --negative: #c97e63;
-  --text-primary: #2e3b32;
-  --text-secondary: #5f6a6a;
-  --background: #faf9f6;
-}
+@layer reset, component, utilities;
 
-*,
-*:before,
-*:after {
-  box-sizing: border-box;
-}
+@layer reset {
+  :root {
+    font-family: system-ui, sans-serif;
+    --brand-primary: #a1b57c;
+    --brand-secondary: #c9d5a0;
+    --accent-primary: #dad2c7;
+    --accent-secondary: #d4a656;
+    --positive: #9de0dc;
+    --negative: #c97e63;
+    --text-primary: #2e3b32;
+    --text-secondary: #5f6a6a;
+    --background: #faf9f6;
+  }
 
-html {
-  background: var(--background);
-  color: var(--text-primary);
-}
+  *,
+  *:before,
+  *:after {
+    box-sizing: border-box;
+  }
 
-body {
-  margin: 0;
+  html {
+    background: var(--background);
+    color: var(--text-primary);
+  }
+
+  body {
+    margin: 0;
+  }
+
+  header,
+  main,
+  footer {
+    padding: 16px 32px;
+    overflow-x: clip;
+
+    & > * {
+      display: block;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+  }
+
+  header,
+  footer {
+    background-color: var(--brand-primary);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  input {
+    font: inherit;
+  }
+
+  p {
+    margin: 0;
+  }
 }

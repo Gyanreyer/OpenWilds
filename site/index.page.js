@@ -3,14 +3,26 @@ import { getScopedComponentID } from "./_lib/scid.js";
 
 import Base from "./_layouts/base.layout.js";
 import { SearchBar } from "#site-components/SearchBar/SearchBar.component.js";
-
-const scid = getScopedComponentID();
+import { css } from "#site-lib/css.js";
 
 export default function IndexPage({ ...data }) {
   return html`<${Base}>
-    <main data-scid=${scid}>
-      <h1>OpenWilds</h1>
+    <header>
+      <div>
+        <h1>OpenWilds</h1>
+        <p>An open source database of plants native to North America.</p>
+      </div>
+    </header>
+    <main>
       <${SearchBar} />
     </main>
   <//>`;
 }
+
+IndexPage.css = css`
+  header div {
+    display: flex;
+    flex-direction: column;
+    row-gap: 0.25lh;
+  }
+`;

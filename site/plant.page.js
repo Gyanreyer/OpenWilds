@@ -89,13 +89,14 @@ export const config = {
  */
 export default function Plant({ dataEntry }) {
   return html`<${Base}>
-    <${Head}>
-      <link rel="stylesheet" href="${bundle.src("plant")}" />
-    <//>
     <header>
-      <h1>${dataEntry.common_names[0]}</h1>
-      <p aria-description="Scientific name">${dataEntry.scientific_name}</p>
-      <ul id="plant-images">
+      <div>
+        <h1>${dataEntry.common_names[0]}</h1>
+        <p aria-description="Scientific name">${dataEntry.scientific_name}</p>
+      </div>
+    </header>
+    <main>
+    <ul id="plant-images">
       ${dataEntry.images.map((image) => {
     const imageTagImage = image.jpeg[image.jpeg.length - 1];
 
@@ -110,8 +111,7 @@ export default function Plant({ dataEntry }) {
         </figure>
         </li>`;
   })}
-      </ul>
-    </header>
+    </ul>
     ${dataEntry.common_names.length > 1 ? html`<section>
       <h2>Other common names</h2>
       <ul>
@@ -133,9 +133,7 @@ export default function Plant({ dataEntry }) {
     </section>
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
-    <script type="module" async>
-      ${bundle.inline("*")}
-    </script>
+    </main>
   <//>`;
 }
 

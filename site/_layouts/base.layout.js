@@ -30,7 +30,7 @@ export default function BaseLayout({ title = "OpenWilds", description = "OpenWil
       <meta name="generator" content="Eleventy v3.1.2" />
       <meta property="og:type" content="website" />
       <script src="${bundle.src("*")}" type="module" async></script>
-      <link rel="preload" href="${bundle.src("*")}" as="style" onload="this.rel='stylesheet'" />
+      <link rel="stylesheet" href="${bundle.src("*")}" />
     </head>
     <body>
       ${children}
