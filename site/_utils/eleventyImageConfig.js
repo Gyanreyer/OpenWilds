@@ -1,4 +1,6 @@
-const outputDir = import.meta.resolve("../../_site_dist/img/").slice("file://".length);
+import { fileURLToPath } from "node:url";
+
+const outputDir = fileURLToPath(import.meta.resolve("../../_site_dist/img/"));
 
 export const eleventyImageConfig = {
   formats: ["webp", "jpeg"],

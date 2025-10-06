@@ -1,9 +1,16 @@
 import htm from "htm";
+import { fileURLToPath } from "node:url";
+import { getCallSites } from "node:util";
 
 /**
  * @import { JSResult } from "./js.js"
  * @import { CSSResult } from "./css.js"
  */
+
+const eleventyInputDir = process.env.__ELEVENTY_INPUT_DIR__;
+if (!eleventyInputDir) {
+  console.error("Environment variable __ELEVENTY_INPUT_DIR__ is not set; incremental build dependency tracking may not work as expected.");
+}
 
 const voidTagNames = {
   'area': true,
@@ -62,6 +69,7 @@ const DOMAttributeNames = {
  *    [bundleName: string]: Set<string>;
  *  };
  *  jsDependencies: Set<string>;
+ *  htmlDependencies: Set<string>;
  * }} RenderResult
  */
 
@@ -97,6 +105,28 @@ function h(tagNameOrComponent, attrs, ...children) {
   let serializedHTMLStr = "";
 
   attrs = attrs || {};
+
+  /**
+   * List of file paths that were involved in rendering this HTML
+   * which we will treat as our dependencies for Eleventy's
+   * incremental builds.
+   * @type {Set<string>}
+   */
+  const htmlDependencies = new Set();
+  if (eleventyInputDir) {
+    for (const callSite of getCallSites()) {
+      const path = fileURLToPath(callSite.scriptName);
+
+      if (path.startsWith(import.meta.dirname)) {
+        // Skip lib files
+        continue;
+      }
+
+      if (path.startsWith(eleventyInputDir)) {
+        htmlDependencies.add(path);
+      }
+    }
+  }
 
   /**
    * @type {{
@@ -146,10 +176,11 @@ function h(tagNameOrComponent, attrs, ...children) {
 
     const {
       html: componentHTML,
-      cssBundles: componentCSSBundles = {},
-      jsBundles: componentJSBundles = {},
-      cssDependencies: componentCSSDependencies = [],
-      jsDependencies: componentJSDependencies = [],
+      cssBundles: componentCSSBundles,
+      jsBundles: componentJSBundles,
+      cssDependencies: componentCSSDependencies,
+      jsDependencies: componentJSDependencies,
+      htmlDependencies: componentHTMLDependencies,
     } = tagNameOrComponent({
       ...attrs,
       children,
@@ -176,12 +207,17 @@ function h(tagNameOrComponent, attrs, ...children) {
       }
     }
 
+    for (const dependency of componentHTMLDependencies) {
+      htmlDependencies.add(dependency);
+    }
+
     return {
       html: componentHTML,
       cssBundles,
       cssDependencies,
       jsBundles,
       jsDependencies,
+      htmlDependencies,
     };
   }
 
@@ -239,6 +275,11 @@ function h(tagNameOrComponent, attrs, ...children) {
               jsDependencies.add(dependency);
             }
           }
+          if (children.htmlDependencies) {
+            for (const dependency of children.htmlDependencies) {
+              htmlDependencies.add(dependency);
+            }
+          }
         }
       };
 
@@ -254,6 +295,7 @@ function h(tagNameOrComponent, attrs, ...children) {
     cssDependencies,
     jsBundles,
     jsDependencies,
+    htmlDependencies,
   };
 }
 

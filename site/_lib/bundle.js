@@ -58,6 +58,9 @@ bundle.import = (importPath, bundleName) => {
   if (importPath.startsWith(FILE_URL_PREFIX)) {
     resolvedFilePath = importPath.slice(FILE_URL_PREFIX_LENGTH);
   } else if (importPath.startsWith("/")) {
+    if (!process.env.__ELEVENTY_INPUT_DIR__) {
+      throw new Error(`bundle.import() called with absolute path "${importPath}", but environment variable __ELEVENTY_INPUT_DIR__ is not set`);
+    }
     // Absolute path; resolve relative to the Eleventy input directory
     resolvedFilePath = resolve(process.env.__ELEVENTY_INPUT_DIR__, `.${importPath}`);
   } else if (importPath.startsWith("./") || importPath.startsWith("../")) {
@@ -75,7 +78,9 @@ bundle.import = (importPath, bundleName) => {
       [bundleNameSymbol]: bundleName,
     })
   } catch (err) {
-    throw new Error(`bundle.import failed to import file at path "${importPath}": ${err.message}`);
+    throw new Error(`bundle.import failed to import file at path "${importPath}"`, {
+      cause: err,
+    });
   }
 };
 

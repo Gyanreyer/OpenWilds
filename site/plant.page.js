@@ -1,7 +1,8 @@
 import { glob } from "tinyglobby";
 import { parse as parseYaml } from "yaml";
-import { readFile } from "node:fs/promises";
 import Image from '@11ty/eleventy-img';
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 import { html } from "#site-lib/html.js";
 
@@ -12,15 +13,12 @@ import { MoistureRequirementSection } from "#site-components/plant/MoistureRequi
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 import { css } from "#site-lib/css.js";
 import { bundle } from "#site-lib/bundle.js";
-import { Head } from "#site-lib/components/Head.component.js";
 
 /**
  * @import { PlantData } from "./types/plantData.js";
  */
 
-const baseDataFileDirectoryPath = import.meta
-  .resolve("../data/")
-  .slice("file://".length);
+const baseDataFileDirectoryPath = fileURLToPath(import.meta.resolve("../data/"));
 const dataEntryPaths = await glob("plantae/**/data.yml", {
   cwd: baseDataFileDirectoryPath,
   onlyFiles: true,
@@ -151,6 +149,7 @@ Plant.css = css`
       min-width: min(240px, 100vw);
       max-width: 480px;
       max-height: 320px;
+      margin-bottom: auto;
     }
 
     figure {

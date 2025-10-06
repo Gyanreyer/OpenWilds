@@ -18,11 +18,11 @@
  */
 export function renderComponent(component, props = {}) {
   const {
-    html,
     cssBundles,
     cssDependencies,
     jsBundles,
     jsDependencies,
+    ...restRenderRestults
   } = component(props);
 
   const componentCSS = component.css?.();
@@ -48,10 +48,10 @@ export function renderComponent(component, props = {}) {
   }
 
   return {
-    html,
     cssBundles,
     cssDependencies,
     jsBundles,
     jsDependencies,
+    ...restRenderRestults,
   };
 }

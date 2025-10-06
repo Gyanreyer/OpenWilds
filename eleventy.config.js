@@ -203,9 +203,10 @@ export default function (eleventyConfig) {
           jsBundles: renderedJSBundles,
           cssDependencies: renderedCSSDeps,
           jsDependencies: renderedJSDeps,
+          htmlDependencies: renderedHTMLDeps,
         } = renderComponent(pageComponent, data);
 
-        /** @type {any} */(this).addDependencies(inputPath, [...renderedCSSDeps, ...renderedJSDeps]);
+        /** @type {any} */(this).addDependencies(inputPath, [...renderedCSSDeps, ...renderedJSDeps, ...renderedHTMLDeps]);
 
         // Set of JS bundles which were used on this page but haven't been inserted into script tags yet
         const unimportedJSBundleNameSet = new Set(Object.keys(renderedJSBundles));
@@ -781,14 +782,14 @@ export default function (eleventyConfig) {
      *  directories: {
      *   input: string;
      *  }; 
-     * }} params 
+     * }} params
      */
     async ({
       directories: {
         input
       },
     }) => {
-      process.env.__ELEVENTY_INPUT_DIR__ = input;
+      process.env.__ELEVENTY_INPUT_DIR__ = resolve(input);
     });
 
   eleventyConfig.on("eleventy.after",

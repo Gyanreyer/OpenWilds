@@ -7,8 +7,9 @@ import {
 } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { heightStringToInches } from '../utils/heightStringToInches.js';
+import { fileURLToPath } from 'node:url';
 
-const distDir = import.meta.resolve("../dist/").slice("file://".length);
+const distDir = fileURLToPath(import.meta.resolve("../dist/"));
 
 try {
   await access(distDir);
@@ -144,20 +145,26 @@ const insertCommonName = db.prepare(/*sql*/`
   );
 `);
 
-const insertCommonNames = db.transaction(({
-  plant_id,
-  common_names
-}) => {
-  for (let i = 0; i < common_names.length; i++) {
-    const name = common_names[i];
-    insertCommonName.run({
-      plant_id,
-      common_name: name.trim(),
-      // First name is primary. We can't bind boolean directly for some reason so use 1/0
-      is_primary_name: i === 0 ? 1 : 0,
-    });
-  }
-});
+const insertCommonNames = db.transaction(
+  /**
+   * @param {Object} params
+   * @param {number} params.plant_id
+   * @param {string[]} params.common_names
+   */
+  ({
+    plant_id,
+    common_names
+  }) => {
+    for (let i = 0; i < common_names.length; i++) {
+      const name = common_names[i];
+      insertCommonName.run({
+        plant_id,
+        common_name: name.trim(),
+        // First name is primary. We can't bind boolean directly for some reason so use 1/0
+        is_primary_name: i === 0 ? 1 : 0,
+      });
+    }
+  });
 
 const insertBloomColor = db.prepare(/*sql*/`
   INSERT INTO plant_bloom_colors (
@@ -213,17 +220,25 @@ const insertDistributionRegion = db.prepare(/*sql*/`
 
 const getDistributionRegionID = db.prepare(/*sql*/`SELECT id FROM distribution_regions WHERE country_code = ? AND state_code = ?`);
 
-const upsertDistributionRegion = db.transaction(({
-  country_code,
-  state_code
-}) => {
-  const region = getDistributionRegionID.get(country_code, state_code);
-  if (region) {
-    return region;
-  }
+const upsertDistributionRegion = db.transaction(
+  /**
+   * @param {Object} params
+   * @param {string} params.country_code
+   * @param {string} params.state_code
+   * 
+   * @returns {{id: number}}
+   */
+  ({
+    country_code,
+    state_code
+  }) => {
+    const region = getDistributionRegionID.get(country_code, state_code);
+    if (region) {
+      return region;
+    }
 
-  return insertDistributionRegion.get(country_code, state_code);
-});
+    return insertDistributionRegion.get(country_code, state_code);
+  });
 
 const insertPlantDistributionRegion = db.prepare(/*sql*/`
   INSERT INTO plant_distribution_regions (
@@ -302,7 +317,12 @@ const insertPlantEntries = db.transaction(
       }
 
       for (const countryCode in entry.distribution) {
-        for (const stateCode of entry.distribution[countryCode]) {
+        const states = entry.distribution[/** @type {keyof PlantData["distribution"]} */(countryCode)];
+        if (!Array.isArray(states) || states.length === 0) {
+          // No states/provinces listed; skip
+          continue;
+        }
+        for (const stateCode of states) {
           const normalizedCountryCode = countryCode.trim().toUpperCase();
           const normalizedStateCode = stateCode.trim().toUpperCase();
 
@@ -321,9 +341,8 @@ const insertPlantEntries = db.transaction(
   });
 
 
-const baseDataFileDirectoryPath = import.meta
-  .resolve("../data/")
-  .slice("file://".length);
+const baseDataFileDirectoryPath = fileURLToPath(import.meta
+  .resolve("../data/"));
 const dataEntryPaths = await glob("plantae/**/data.yml", {
   cwd: baseDataFileDirectoryPath,
   onlyFiles: true,
@@ -354,6 +373,6 @@ db.pragma("query_only = ON");
 
 db.close();
 
-const sitePublicDir = import.meta.resolve("../site/public").slice("file://".length);
+const sitePublicDir = fileURLToPath(import.meta.resolve("../site/public"));
 const dbFile = await readFile(dbPath);
 await writeFile(join(sitePublicDir, `OpenWilds.db.gz`), gzipSync(dbFile));

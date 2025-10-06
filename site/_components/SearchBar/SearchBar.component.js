@@ -8,13 +8,14 @@ export function SearchBar() {
   return html`
     <search-bar>
       <form role="search">
-        <input type="text" name="query" placeholder="Search..." autocomplete="off"
+        <input type="text" name="query" placeholder="Search by common or scientific name"
+          autocomplete="off"
           role="combobox"
           aria-activedescendant=""
           aria-autocomplete="list"
           aria-expanded="false"
           aria-controls="search-results"
-          aria-label="Search"
+          aria-label="Search by common or scientific name"
           id="search-input"
         />
       </form>
