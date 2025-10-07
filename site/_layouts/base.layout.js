@@ -12,7 +12,7 @@ import { html } from "#site-lib/html.js";
  * @param {string} props.description
  * @param {Children} props.children
  */
-export default function BaseLayout({ title = "OpenWilds", description = "OpenWilds Plant Database", children }) {
+export default function BaseLayout({ title = "OpenWilds", description = "An open-source database of plants native to North America.", children }) {
   return html`
   <html lang="en">
     <head>

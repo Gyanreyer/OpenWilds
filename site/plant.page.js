@@ -5,14 +5,14 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { html } from "#site-lib/html.js";
+import { css } from "#site-lib/css.js";
+import { bundle } from "#site-lib/bundle.js";
 
 import Base from "#site-layouts/base.layout.js";
 import { BloomColorSection } from "#site-components/plant/BloomColorSection.component.js";
 import { LightRequirementSection } from "#site-components/plant/LightRequirementSection.component.js";
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
-import { css } from "#site-lib/css.js";
-import { bundle } from "#site-lib/bundle.js";
 
 /**
  * @import { PlantData } from "./types/plantData.js";
@@ -182,5 +182,11 @@ Plant.css = css`
       display: block;
       border-radius: 4px;
     }
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    row-gap: 1rem;
   }
 `;
