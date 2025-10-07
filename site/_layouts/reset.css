@@ -61,7 +61,7 @@
   h5,
   h6 {
     font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, serif;
-    margin: 0;
+    margin-block: 0;
   }
 
   a {
@@ -84,6 +84,6 @@
   }
 
   p {
-    margin: 0;
+    margin-block: 0;
   }
 }
