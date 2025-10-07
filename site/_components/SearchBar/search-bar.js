@@ -234,6 +234,10 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     </li>`;
   }
 
+  static getNoResultsHTML() {
+    return /* html */`<li role="presentation" class="no-results">No results found</li>`;
+  }
+
   /**
    * Allowed characters in search string:
    * - Non-ASCII range characters (i.e. unicode codepoints greater than 127), or
@@ -246,7 +250,7 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
    * @param {string} searchString
    */
   static sanitizeSearchString(searchString) {
-    let sanitizedString = '"';
+    let sanitizedString = '';
 
     for (let i = 0; i < searchString.length; i++) {
       const char = searchString.charAt(i);
@@ -262,7 +266,7 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       }
     }
 
-    sanitizedString += '"';
+    sanitizedString += '';
 
     return `"${sanitizedString.split(this.WHITESPACE_REGEX).filter(s => s.length > 0).join('" "').trim()}"`;
   }
@@ -478,9 +482,10 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
 
     const searchResultsListElement = this.searchResultsListElement;
 
-    if (searchString.length < 3) {
-      // Our search tokenizer uses trigrams, so we need at least 3 characters to search
-      searchResultsListElement.innerHTML = "";
+    if (searchString.length < 5) {
+      // Our search tokenizer uses trigrams, so we need at least 3 characters to search.
+      // The sanitized search string is wrapped in quotes, so we need at least 5 characters total.
+      searchResultsListElement.innerHTML = SearchBarElement.getNoResultsHTML();
       return;
     }
 
@@ -493,7 +498,7 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     const results = /** @type {SearchResult[]} */(db.selectObjects(SearchBarElement.SEARCH_QUERY_STRING, searchString));
 
     if (results.length === 0) {
-      searchResultsListElement.innerHTML = `<li role="presentation" class="no-results">No results found</li>`;
+      searchResultsListElement.innerHTML = SearchBarElement.getNoResultsHTML();
       return;
     }
 
