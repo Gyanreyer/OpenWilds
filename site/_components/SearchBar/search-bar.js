@@ -90,17 +90,41 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       position: relative;
     }
 
+    search-bar form {
+      position: relative;
+      background-color: var(--background);
+      border-radius: 8px;
+      border: 1px solid var(--text-secondary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      font-size: 1.2rem;
+      line-height: 1.5;
+
+      &:focus-within {
+        border-color: var(--brand-primary);
+      }
+
+      &::after {
+        content: "🔍️";
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+    }
+
     search-bar form input {
       display: block;
       width: 100%;
-      padding: 0.5em;
-      font-size: 1.2rem;
-      line-height: 1.5;
-      border: 1px solid var(--text-secondary);
-      border-radius: 8px;
+      /* Extra padding on the end to make room for the magnifying glass icon */
+      padding-inline: 1ch 4ch;
+      padding-block: 0.25lh;
+      font-size: inherit;
+      line-height: inherit;
+      border: none;
+      background: transparent;
 
       &:focus {
-        border-color: var(--brand-primary);
+        outline: none;
       }
     }
 
@@ -145,32 +169,41 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
       align-items: center;
       justify-content: space-between;
       text-decoration: none;
-      padding: 4px;
-      color: var(--text-primary);
+      padding: 8px;
+      font-size: 1.1rem;
       transition-duration: 0.1s;
       transition-property: background-color, opacity;
     }
 
+    #search-results li a:is([aria-selected="true"],:hover) {
+      background-color: var(--accent-secondary);
+    }
     #search-results li a[aria-selected="true"] {
-      background-color: var(--positive);
       font-weight: 600;
+    }
+    #search-results:has(li a:hover) li a[aria-selected="true"]:not(:hover) {
+      /** Dim the selected option if a different option is being hovered */
+      opacity: 0.4;
     }
 
     #search-results li a::after {
+      /** Show a return character on the selected option to indicate that pressing enter will go to that */
       content: "⏎";
       opacity: 0;
       transition: opacity 0.1s;
     }
+
     #search-results li a[aria-selected="true"]::after {
       opacity: 1;
     }
 
-    #search-results li a:hover {
-      background-color: var(--positive);
+    #search-results li a:focus {
+      outline: none;
     }
 
-    #search-results:has(li a:hover) li a[aria-selected="true"]:not(:hover) {
-      opacity: 0.4;
+    #search-results li.no-results {
+      padding: 8px;
+      font-size: 1.1rem;
     }
   `;
 
@@ -460,7 +493,7 @@ window.customElements.define("search-bar", class SearchBarElement extends HTMLEl
     const results = /** @type {SearchResult[]} */(db.selectObjects(SearchBarElement.SEARCH_QUERY_STRING, searchString));
 
     if (results.length === 0) {
-      searchResultsListElement.innerHTML = `<li role="presentation">No results found</li>`;
+      searchResultsListElement.innerHTML = `<li role="presentation" class="no-results">No results found</li>`;
       return;
     }
 

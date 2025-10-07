@@ -6,12 +6,17 @@
     --brand-primary: #a1b57c;
     --brand-secondary: #c9d5a0;
     --accent-primary: #dad2c7;
-    --accent-secondary: #d4a656;
+    --accent-secondary: #e0b264;
     --positive: #9de0dc;
     --negative: #c97e63;
     --text-primary: #2e3b32;
     --text-secondary: #5f6a6a;
     --background: #faf9f6;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--positive);
+    outline-offset: 2px;
   }
 
   *,
@@ -53,6 +58,7 @@
   h4,
   h5,
   h6 {
+    font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, serif;
     margin: 0;
   }
 
