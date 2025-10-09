@@ -11,9 +11,15 @@ bloom_time:
 bloom_color:
   name: Red
   hex: "#DC001F"
-height: 2-4 feet
-light: 3-5
-moisture: 2-4
+height:
+  min: 2ft
+  max: 4ft
+light:
+  min: 3
+  max: 5
+moisture:
+  min: 2
+  max: 4
 distribution:
   CA:
     - NB

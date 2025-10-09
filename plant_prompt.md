@@ -37,6 +37,7 @@ scientific_name: [Genus species]
 common_names:
     - [Name 1]
     - [Name 2]
+category: [Tree | Shrub | Graminoid | Fern | Forb | Vine | Succulent]
 life_cycle: [Annual | Biennial | Perennial]
 bloom_time:
     start: [Month]
@@ -44,19 +45,25 @@ bloom_time:
 bloom_color:
   name: [Human readable color name, ie "Purple"]
   hex: [Hex code representing the bloom color, ie "#F06CE7"]
-height: [Measurement in feet or inches]
+height:
+  min: [Minimum height in feet or inches, ie "12in" or "1ft"]
+  max: [Maximum height in feet or inches, ie "18in" or "4ft"]
 # 1 = full shade, 5 = full sun. Use a range if applicable.
-light: [single number or range like 2-4]
+light:
+  min: [Minimum light requirement number on range from 1-5]
+  max: [Maximum light requirement number on range from 1-5]
 # 1 = dry soil, 5 = wet soil. Use a range if applicable.
-moisture: [single number or range like 2-4]
+moisture:
+  min: [Minimum moisture requirement number on range from 1-5]
+  max: [Maximum moisture requirement number on range from 1-5]
 ```
 
 ##### Field Notes:
 - `common_names` entries should use title case.
 - All list values (e.g., `common_names`) should be written in YAML list syntax.
 - Make sure all included common names are correct and do not refer to other plants. Avoid more obscure names if possible.
-- `light` and `moisture` may be a **single number** (e.g., `3`) or a **range** (e.g., `2-4`).
-- `height`'s units should use the full word instead of an abbreviation, ie `inches` or `feet`.
+- `light` and `moisture` should be represented as a range with a min and max value. If a plant only falls into one number on the range, it is okay to have the min and max numbers be the same.
+- `height`'s values should be a whole number followed immediately by the abbreviated unit. For example, `12in` or `4ft`. Feet should be preferred over inches for anything beyond 2 feet.
 - **Do not include any fields not part of the schema** unless noted in a comment as a suggested extension.
 
 ---
@@ -78,6 +85,7 @@ File path: data/plantae/asteraceae/echinacea/purpurea/data.yml
 scientific_name: Echinacea purpurea
 common_names:
   - Purple Coneflower
+category: Forb
 life_cycle: Perennial
 bloom_time:
   start: July
@@ -85,9 +93,15 @@ bloom_time:
 bloom_color:
   name: Purple
   hex: "#F06CE7"
-height: 4 feet
+height:
+  min: 4ft
+  max: 4ft
 # 1 = full shade, 5 = full sun. Use a range if applicable.
-light: 3-5
+light:
+  min: 3
+  max: 5
 # 1 = dry, 5 = wet. Use a range if applicable.
-moisture: 2-4
+moisture: 
+  min: 2
+  max: 4
 ```

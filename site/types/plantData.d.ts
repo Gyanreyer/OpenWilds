@@ -42,7 +42,7 @@ export interface BloomColor {
   hex: `#${string}`;
 }
 
-export type PlantCategory = "tree" | "shrub" | "graminoid" | "fern" | "forb" | "vine" | "succulent";
+export type PlantCategory = "Tree" | "Shrub" | "Graminoid" | "Fern" | "Forb" | "Vine" | "Succulent";
 
 export interface PlantData {
   scientific_name: string;
@@ -66,15 +66,24 @@ export interface PlantData {
   /**
    * Generally in format of "[number or dash-separated range] [feet|inches]", ie "3 feet", "4-8 inches"
    */
-  height: string;
+  height: {
+    min: `${number}${"in" | "ft"}`,
+    max: `${number}${"in" | "ft"}`,
+  };
   /**
    * Number or dash-separated range, scale is 1-5 where 1 is full shade and 5 is full sun
    */
-  light: OneThroughFive | `${OneThroughFive}` | `${OneThroughFive}-${OneThroughFive}`;
+  light: {
+    min: OneThroughFive;
+    max: OneThroughFive;
+  };
   /**
    * Number or dash-separated range, scale is 1-5 where 1 is dry and 5 is wet
    */
-  moisture: OneThroughFive | `${OneThroughFive}` | `${OneThroughFive}-${OneThroughFive}`;
+  moisture: {
+    min: OneThroughFive;
+    max: OneThroughFive;
+  };
   /**
    * State/province distribution data from USDA Plants database data for US and Canada
    */

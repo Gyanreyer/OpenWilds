@@ -10,9 +10,15 @@ bloom_time:
 bloom_color:
   name: Pink
   hex: "#E285C5"
-height: 5-7 feet
-light: 3-5
-moisture: 3-5
+height:
+  min: 5ft
+  max: 7ft
+light:
+  min: 3
+  max: 5
+moisture:
+  min: 3
+  max: 5
 distribution:
   US:
     - AL

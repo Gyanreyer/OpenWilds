@@ -9,11 +9,15 @@ bloom_time:
 bloom_color:
   name: Purple
   hex: "#F06CE7"
-height: 4 feet
-# 1 = full shade, 5 = full sun
-light: 3-5
-# 1 = dry, 5 = wet
-moisture: 2-4
+height:
+  min: 4ft
+  max: 4ft
+light:
+  min: 3
+  max: 5
+moisture:
+  min: 2
+  max: 4
 distribution:
   US:
     - AL

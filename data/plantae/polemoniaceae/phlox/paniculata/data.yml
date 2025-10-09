@@ -11,11 +11,15 @@ bloom_time:
 bloom_color:
   name: Purple
   hex: "#EC30FF"
-height: 2-4 feet
-# 1 = full shade, 5 = full sun.
-light: 4-5
-# 1 = dry soil, 5 = wet soil.
-moisture: 3-5
+height:
+  min: 2ft
+  max: 4ft
+light:
+  min: 4
+  max: 5
+moisture:
+  min: 3
+  max: 5
 distribution:
   US:
     - AL

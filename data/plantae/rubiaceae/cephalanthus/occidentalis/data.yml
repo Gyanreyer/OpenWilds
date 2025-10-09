@@ -9,11 +9,15 @@ bloom_time:
 bloom_color:
   name: White
   hex: "#F0E7E5"
-height: 6-12 feet
-# 1 = full shade, 5 = full sun
-light: 3-5
-# 1 = dry, 5 = wet
-moisture: 4-5
+height:
+  min: 6ft
+  max: 12ft
+light:
+  min: 3
+  max: 5
+moisture:
+  min: 4
+  max: 5
 distribution:
   US:
     - AL

@@ -10,9 +10,15 @@ bloom_time:
 bloom_color:
   name: Pink
   hex: "#EEC4FB"
-height: 12-18 inches
-light: 4-5
-moisture: 2-4
+height:
+  min: 12in
+  max: 18in
+light:
+  min: 4
+  max: 5
+moisture:
+  min: 2
+  max: 4
 distribution:
   CA:
     - AB

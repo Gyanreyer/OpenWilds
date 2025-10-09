@@ -10,9 +10,15 @@ bloom_time:
 bloom_color:
   name: Yellow
   hex: "#E4CB0C"
-height: 1-2 feet
-light: 1-4
-moisture: 3-5
+height:
+  min: 1ft
+  max: 2ft
+light:
+  min: 1
+  max: 4
+moisture:
+  min: 3
+  max: 5
 distribution:
   US:
     - AL

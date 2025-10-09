@@ -127,7 +127,7 @@ export default function Plant({ dataEntry }) {
     </section>` : null}
     <section>
       <h2>Height</h2>
-      <p>${dataEntry.height}</p>
+      <p>${dataEntry.height.min === dataEntry.height.max ? dataEntry.height.max : `${dataEntry.height.min} to ${dataEntry.height.max}`}</p>
     </section>
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />

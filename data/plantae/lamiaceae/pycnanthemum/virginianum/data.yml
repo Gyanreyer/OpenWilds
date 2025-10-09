@@ -11,11 +11,15 @@ bloom_time:
 bloom_color:
   name: White
   hex: "#EFF5E9"
-height: 2-3 feet
-# 1 = full shade, 5 = full sun. Use a range if applicable.
-light: 3-5
-# 1 = dry soil, 5 = wet soil. Use a range if applicable.
-moisture: 2-5
+height:
+  min: 2ft
+  max: 3ft
+light:
+  min: 3
+  max: 5
+moisture:
+  min: 2
+  max: 5
 distribution:
   US:
     - AL

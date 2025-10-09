@@ -1,7 +1,6 @@
 import { bundle } from "#site-lib/bundle.js";
 import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
-import { parseDataRange } from "#site-utils/parseDataRange.js";
 import { PlantDataRangeMeter } from "./PlantDataRangeMeter.component.js";
 
 /**
@@ -21,21 +20,18 @@ const lightLevelNames = {
  * @param {PlantData["light"]} props.lightRequirement
  */
 export function LightRequirementSection({
-  lightRequirement
-}) {
-  const [low, high] = parseDataRange(lightRequirement) || [];
-
-  if (!low || !high) {
-    return null;
+  lightRequirement: {
+    min,
+    max,
   }
-
+}) {
   return html`
     <section>
       <h2 id="light-header">Sun Exposure</h2>
-      <${PlantDataRangeMeter} low=${low} high=${high} id="light-meter" aria-labelledby="light-header" aria-describedby="light-desc"  />
+      <${PlantDataRangeMeter} low=${min} high=${max} id="light-meter" aria-labelledby="light-header" aria-describedby="light-desc"  />
       <p id="light-desc">
-        ${lightLevelNames[low]}${low !== high ?
-      ` to ${lightLevelNames[high]}`
+        ${lightLevelNames[min]}${min !== max ?
+      ` to ${lightLevelNames[max]}`
       : ""
     }
       </p>

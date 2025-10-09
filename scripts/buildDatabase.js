@@ -265,11 +265,18 @@ const insertPlantEntries = db.transaction(
    */
   (plantEntries) => {
     for (const entry of plantEntries) {
-      const [lowHeight, highHeight] = heightStringToInches(entry.height) ?? [null, null];
+      const lowHeight = heightStringToInches(entry.height.min);
+      const highHeight = heightStringToInches(entry.height.max);
 
-      const [lowLight, highLight = lowLight] = /** @type {string} */(entry.light).split("-").map((v) => parseInt(v, 10));
+      const {
+        min: lowLight,
+        max: highLight
+      } = entry.light;
 
-      const [lowMoisture, highMoisture = lowMoisture] = /** @type {string} */(entry.moisture).split("-").map((v) => parseInt(v, 10)) || [];
+      const {
+        min: lowMoisture,
+        max: highMoisture,
+      } = entry.moisture;
 
       let bloomTimeStart = null;
       let bloomTimeEnd = null;

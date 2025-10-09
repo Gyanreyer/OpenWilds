@@ -1,7 +1,6 @@
 import { bundle } from "#site-lib/bundle.js";
 import { css } from "#site-lib/css.js";
 import { html } from "#site-lib/html.js";
-import { parseDataRange } from "#site-utils/parseDataRange.js";
 import { PlantDataRangeMeter } from "./PlantDataRangeMeter.component.js";
 
 /**
@@ -21,21 +20,15 @@ const moistureLevelNames = {
  * @param {PlantData["moisture"]} props.moistureRequirement
  */
 export function MoistureRequirementSection({
-  moistureRequirement
+  moistureRequirement: { min, max }
 }) {
-  const [low, high] = parseDataRange(moistureRequirement) || [];
-
-  if (!low || !high) {
-    return null;
-  }
-
   return html`
     <section>
       <h2 id="moist-header">Soil Moisture</h2>
-      <${PlantDataRangeMeter} low=${low} high=${high} id="moist-meter" aria-labelledby="moist-header" aria-describedby="moist-desc"  />
+      <${PlantDataRangeMeter} low=${min} high=${max} id="moist-meter" aria-labelledby="moist-header" aria-describedby="moist-desc"  />
       <p id="moist-desc">
-        ${moistureLevelNames[low]}${low !== high ?
-      ` to ${moistureLevelNames[high]}`
+        ${moistureLevelNames[min]}${min !== max ?
+      ` to ${moistureLevelNames[max]}`
       : ""
     }
       </p>

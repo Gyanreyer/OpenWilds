@@ -1,22 +1,19 @@
-// Low number is capturing group 1 (index 0)
-// High number is capturing group 4 (index 3)
-// Unit is capturing group 5 (index 4)
-const heightStringRegex = /(\d+)\s*((-|to)\s*(\d+))?\s*(feet|ft|foot|inches|in|inch)/i;
+const heightStringRegex = /(\d+)(ft|in)/i;
 
 /**
- * @param {string} heightString - ie, "5 feet", "2-5 feet", "6-12 inches"
- * @returns {[number,number] | null} The low and high values parsed from the height string in inches, or null if the input couldn't be parsed
+ * @param {string} heightString - ie, "5ft", "12in"
+ * @returns {number}  A number representing the parsed height in inches
  */
 export const heightStringToInches = (heightString) => {
-  const [, low, , , high = low, unit] = heightString.match(heightStringRegex);
+  const match = heightString.match(heightStringRegex);
+  if (!match) {
+    throw new Error(`Unable to parse height string "${heightString}"`)
+  }
+  const [, number, unit] = match;
 
-  if (unit === "feet" || unit === "ft" || unit === "foot") {
-    return [parseInt(low, 10) * 12, parseInt(high, 10) * 12];
-  } else if (unit === "inches" || unit === "in" || unit === "inch") {
-    return [parseInt(low, 10), parseInt(high, 10)];
+  if (unit === "ft") {
+    return parseInt(number, 10) * 12;
   }
 
-  console.log("Unable to parse height string:", heightString);
-
-  return null; // Unable to parse
+  return parseInt(number, 10);
 }

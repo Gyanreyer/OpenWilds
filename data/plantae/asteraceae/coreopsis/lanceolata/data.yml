@@ -10,10 +10,15 @@ bloom_time:
 bloom_color:
   name: Yellow
   hex: "#F8D90B"
-height: 1-2 feet
-light: 4-5
-moisture: 1-3
-
+height:
+  min: 1ft
+  max: 2ft
+light:
+  min: 4
+  max: 5
+moisture:
+  min: 1
+  max: 3
 distribution:
   US:
     - AL

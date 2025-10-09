@@ -10,11 +10,15 @@ bloom_time:
 bloom_color:
   name: Orange
   hex: "#ED452B"
-height: 2-5 feet
-# 1 = full shade, 5 = full sun. Use a range if applicable.
-light: 3-5
-# 1 = dry soil, 5 = wet soil. Use a range if applicable.
-moisture: 3-5
+height:
+  min: 2ft
+  max: 5ft
+light:
+  min: 3
+  max: 5
+moisture:
+  min: 3
+  max: 5
 distribution:
   US:
     - AL

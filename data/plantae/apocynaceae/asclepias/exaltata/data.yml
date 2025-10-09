@@ -9,11 +9,15 @@ bloom_time:
 bloom_color:
   name: White
   hex: "#DDDCF1"
-height: 5 feet
-# 1 = full shade, 5 = full sun
-light: 2-3
-# 1 = dry, 5 = wet
-moisture: 2-4
+height:
+  min: 5ft
+  max: 5ft
+light:
+  min: 2
+  max: 3
+moisture:
+  min: 2
+  max: 4
 distribution:
   US:
     - AL

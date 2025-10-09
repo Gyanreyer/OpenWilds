@@ -13,11 +13,15 @@ bloom_color:
     hex: "#E6001C"
   - name: Yellow
     hex: "#F5E22F"
-height: 1-2 feet
-# 1 = full shade, 5 = full sun. Use a range if applicable.
-light: 2-4
-# 1 = dry soil, 5 = wet soil. Use a range if applicable.
-moisture: 2-4
+height:
+  min: 1ft
+  max: 2ft
+light:
+  min: 2
+  max: 4
+moisture:
+  min: 2
+  max: 4
 distribution:
   US:
     - AL

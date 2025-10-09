@@ -12,11 +12,15 @@ bloom_color:
     hex: "#EBEDED"
   - name: Yellow
     hex: "#FADE11"
-height: 4-8 inches
-# 1 = full shade, 5 = full sun
-light: 2-5
-# 1 = dry, 5 = wet
-moisture: 1-4
+height:
+  min: 4in
+  max: 8in
+light:
+  min: 2
+  max: 5
+moisture:
+  min: 1
+  max: 4
 distribution:
   CA:
     - AB

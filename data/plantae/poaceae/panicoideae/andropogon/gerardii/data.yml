@@ -4,9 +4,15 @@ common_names:
   - Turkeyfoot Bluestem
 category: Graminoid
 life_cycle: Perennial
-height: 4-8 feet
-light: 4-5
-moisture: 1-4
+height:
+  min: 4ft
+  max: 8ft
+light:
+  min: 4
+  max: 5
+moisture:
+  min: 1
+  max: 4
 distribution:
   US:
     - AL

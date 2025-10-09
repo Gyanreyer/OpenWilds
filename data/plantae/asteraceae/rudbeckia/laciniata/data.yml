@@ -13,11 +13,15 @@ bloom_time:
 bloom_color:
   name: Yellow
   hex: "#FBE70B"
-height: 7 feet
-# 1 = full shade, 5 = full sun
-light: 1-5
-# 1 = dry, 5 = wet
-moisture: 3-4
+height:
+  min: 7ft
+  max: 7ft
+light:
+  min: 1
+  max: 5
+moisture:
+  min: 3
+  max: 4
 distribution:
   US:
     - AL
