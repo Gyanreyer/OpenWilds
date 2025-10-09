@@ -42,6 +42,8 @@ export interface BloomColor {
   hex: `#${string}`;
 }
 
+export type PlantCategory = "tree" | "shrub" | "graminoid" | "fern" | "forb" | "vine" | "succulent";
+
 export interface PlantData {
   scientific_name: string;
   common_names: string[];
@@ -82,4 +84,5 @@ export interface PlantData {
   };
   images: ImageData[];
   permalink: string;
+  category: PlantCategory;
 }
