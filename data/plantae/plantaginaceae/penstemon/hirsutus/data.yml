@@ -21,7 +21,7 @@ moisture:
   max: 4
 distribution:
   CA:
-    - "ON"
+    - ON
     - QC
   US:
     - CT

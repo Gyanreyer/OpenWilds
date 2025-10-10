@@ -23,7 +23,7 @@ distribution:
   CA:
     - AB
     - BC
-    - "ON"
+    - ON
     - SK
   US:
     - AL

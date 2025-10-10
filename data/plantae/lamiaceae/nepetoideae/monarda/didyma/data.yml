@@ -23,7 +23,7 @@ moisture:
 distribution:
   CA:
     - NB
-    - "ON"
+    - ON
     - QC
   US:
     - CT

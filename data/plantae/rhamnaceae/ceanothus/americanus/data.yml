@@ -1,7 +1,7 @@
 scientific_name: Ceanothus americanus
 common_names:
   - New Jersey Tea
-category: Forb
+category: Shrub
 life_cycle: Perennial
 bloom_time:
   start: June
@@ -56,5 +56,5 @@ distribution:
     - WI
     - WV
   CA:
-    - "ON"
+    - ON
     - QC
