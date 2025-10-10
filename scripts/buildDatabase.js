@@ -41,6 +41,7 @@ db.exec(/*sql*/`
     id                INTEGER   PRIMARY KEY AUTOINCREMENT,
     path              TEXT      UNIQUE NOT NULL,
     scientific_name   TEXT      UNIQUE NOT NULL,
+    category          TEXT      CHECK(category IN ('tree', 'shrub', 'graminoid', 'fern', 'forb', 'vine', 'succulent')) NOT NULL,
     life_cycle        TEXT      CHECK(life_cycle IN ('annual', 'biennial', 'perennial')) NOT NULL,
     bloom_time_start  INTEGER   CHECK(bloom_time_start >= 1 AND bloom_time_start <= 12),
     bloom_time_end    INTEGER   CHECK(bloom_time_end >= 1 AND bloom_time_end <= 12),
@@ -109,6 +110,7 @@ const insertPlantEntry = db.prepare(/*sql*/`
   INSERT INTO plants (
     path,
     scientific_name,
+    category,
     life_cycle,
     bloom_time_start,
     bloom_time_end,
@@ -121,6 +123,7 @@ const insertPlantEntry = db.prepare(/*sql*/`
   ) VALUES (
     @path,
     @scientific_name,
+    @category,
     @life_cycle,
     @bloom_time_start,
     @bloom_time_end,
@@ -288,6 +291,7 @@ const insertPlantEntries = db.transaction(
       const { id: plantID } = insertPlantEntry.get({
         path: entry.path,
         scientific_name: entry.scientific_name,
+        category: entry.category.toLowerCase(),
         life_cycle: entry.life_cycle.toLowerCase(),
         bloom_time_start: bloomTimeStart,
         bloom_time_end: bloomTimeEnd,
