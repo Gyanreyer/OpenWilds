@@ -1,7 +1,6 @@
-import { glob } from "tinyglobby";
 import { parse as parseYaml } from "yaml";
 import Image from '@11ty/eleventy-img';
-import { readFile } from "node:fs/promises";
+import { readFile, glob } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { html } from "#site-lib/html.js";
@@ -13,17 +12,56 @@ import { BloomColorSection } from "#site-components/plant/BloomColorSection.comp
 import { LightRequirementSection } from "#site-components/plant/LightRequirementSection.component.js";
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
+import { resolve } from "node:path";
 
 /**
  * @import { PlantData } from "./types/plantData.js";
  */
 
 const baseDataFileDirectoryPath = fileURLToPath(import.meta.resolve("../data/"));
-const dataEntryPaths = await glob("plantae/**/data.yml", {
+const dataEntryPathsIterator = await glob("plantae/**/data.yml", {
   cwd: baseDataFileDirectoryPath,
-  onlyFiles: true,
-  absolute: true,
 });
+
+/**
+ * @type {PlantData[]}
+ */
+const dataEntries = [];
+
+for await (const relativeEntryPath of dataEntryPathsIterator) {
+  const path = resolve(baseDataFileDirectoryPath, relativeEntryPath);
+  const fileContents = await readFile(path, "utf8");
+
+  const dataEntryDirectory = path.slice(0, -"data.yml".length);
+
+  const imagePaths = await glob(["images/*.jpg", "images/*.jpeg", "images/*.png", "images/*.webp"], {
+    cwd: dataEntryDirectory,
+  });
+
+  const images = [];
+  for await (const relativeImagePath of imagePaths) {
+    const imagePath = resolve(dataEntryDirectory, relativeImagePath);
+    const result = await Image(imagePath, eleventyImageConfig);
+
+    const imageMetdata = JSON.parse(await readFile(
+      `${imagePath}.meta.json`,
+      "utf8"
+    ));
+
+    images.push({
+      ...result,
+      meta: imageMetdata,
+    });
+  }
+
+  dataEntries.push({
+    ...parseYaml(fileContents),
+    permalink: dataEntryDirectory.slice(
+      baseDataFileDirectoryPath.length,
+    ),
+    images,
+  });
+}
 
 export const config = {
   pagination: {
@@ -31,54 +69,13 @@ export const config = {
     size: 1,
     alias: "dataEntry",
   },
+  dataEntries,
   /**
    * @param {{
    *  dataEntry: PlantData;
    * }} data
    */
   permalink: (data) => data.dataEntry.permalink,
-  dataEntries: await Promise.all(
-    dataEntryPaths.map(
-      /**
-       * @param {string} path
-       * @returns {Promise<PlantData>}
-       */
-      async (path) => {
-        const fileContents = await readFile(path, "utf8");
-
-        const dataEntryDirectory = path.slice(0, -"data.yml".length);
-
-        const imagePaths = await glob(["images/*.jpg", "images/*.jpeg", "images/*.png", "images/*.webp"], {
-          cwd: dataEntryDirectory,
-          onlyFiles: true,
-          absolute: true,
-        });
-
-        const images = await Promise.all(
-          imagePaths.map(async (imagePath) => {
-            const result = await Image(imagePath, eleventyImageConfig);
-
-            const imageMetdata = JSON.parse(await readFile(
-              `${imagePath}.meta.json`,
-              "utf8"
-            ));
-
-            return {
-              ...result,
-              meta: imageMetdata,
-            }
-          })
-        );
-
-        return {
-          ...parseYaml(fileContents),
-          permalink: dataEntryDirectory.slice(
-            baseDataFileDirectoryPath.length,
-          ),
-          images,
-        };
-      })
-  ),
 };
 
 /**
@@ -86,6 +83,8 @@ export const config = {
  * @param {PlantData} props.dataEntry
  */
 export default function Plant({ dataEntry }) {
+  const hasDistributionData = (dataEntry.distribution.US?.length ?? 0) > 0 || (dataEntry.distribution.CA?.length ?? 0) > 0;
+
   return html`<${Base}>
     <header>
       <div>
@@ -131,6 +130,16 @@ export default function Plant({ dataEntry }) {
     </section>
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
+    ${hasDistributionData ? html`<svg xmlns="http://www.w3.org/2000/svg" width="1701.78" height="1695.51" id="map">
+      <style>
+      use {
+        color: var(--brand-primary);
+        ${dataEntry.distribution.US?.map((state) => `--us-${state.toLowerCase()}: currentColor;`).join("\n") ?? ""}
+        ${dataEntry.distribution.CA?.map((prov) => `--ca-${prov.toLowerCase()}: currentColor;`).join("\n") ?? ""}
+      }
+      </style>
+      <use href="/US-CA-map.svg#map"></use>
+    </svg>` : ""}
     </main>
   <//>`;
 }
@@ -188,5 +197,9 @@ Plant.css = css`
     display: flex;
     flex-direction: column;
     row-gap: 1rem;
+  }
+
+  #map {
+    height: auto;
   }
 `;

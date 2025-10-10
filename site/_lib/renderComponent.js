@@ -14,16 +14,16 @@
  * @param {Component} component
  * @param {*} props
  * 
- * @returns {RenderResult}
+ * @returns {Promise<RenderResult>}
  */
-export function renderComponent(component, props = {}) {
+export async function renderComponent(component, props = {}) {
   const {
     cssBundles,
     cssDependencies,
     jsBundles,
     jsDependencies,
     ...restRenderRestults
-  } = component(props);
+  } = await component(props);
 
   const componentCSS = component.css?.();
   if (componentCSS) {

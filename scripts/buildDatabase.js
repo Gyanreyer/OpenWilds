@@ -1,9 +1,9 @@
 import Database from 'better-sqlite3';
-import { glob } from "tinyglobby";
 import { parse as parseYaml } from "yaml";
-import { readFile, access, mkdir, writeFile } from "node:fs/promises";
+import { readFile, access, mkdir, writeFile, glob } from "node:fs/promises";
 import {
   join,
+  resolve,
 } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { heightStringToInches } from '../utils/heightStringToInches.js';
@@ -76,7 +76,7 @@ db.exec(/*sql*/`
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
   );
 
-  --- Enumerates regions (country + state/province) where plants are found
+  --- Enumerates regions (country + state/province/territory) where plants are found
   CREATE TABLE IF NOT EXISTS distribution_regions (
     id            INTEGER   PRIMARY KEY AUTOINCREMENT,
     country_code  TEXT      NOT NULL CHECK(LENGTH(country_code) = 2 AND country_code = UPPER(country_code)),
@@ -354,21 +354,21 @@ const insertPlantEntries = db.transaction(
 
 const baseDataFileDirectoryPath = fileURLToPath(import.meta
   .resolve("../data/"));
-const dataEntryPaths = await glob("plantae/**/data.yml", {
+const filesIterator = await glob("plantae/**/data.yml", {
   cwd: baseDataFileDirectoryPath,
-  onlyFiles: true,
-  absolute: true,
 });
 
-const plantDataEntries = await Promise.all(
-  dataEntryPaths.map(async (path) => {
-    const fileContents = await readFile(path, "utf8");
-    return {
-      path: path.slice(baseDataFileDirectoryPath.length, -"/data.yml".length),
-      ...parseYaml(fileContents),
-    };
-  })
-);
+/**
+ * @type {(PlantData & { path: string; })[]}
+ */
+const plantDataEntries = [];
+for await (const filePath of filesIterator) {
+  const fileContents = await readFile(resolve(baseDataFileDirectoryPath, filePath), "utf8");
+  plantDataEntries.push({
+    path: filePath.slice(0, -"/data.yml".length),
+    ...parseYaml(fileContents),
+  });
+}
 
 insertPlantEntries(plantDataEntries);
 

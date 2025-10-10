@@ -204,7 +204,7 @@ export default function (eleventyConfig) {
           cssDependencies: renderedCSSDeps,
           jsDependencies: renderedJSDeps,
           htmlDependencies: renderedHTMLDeps,
-        } = renderComponent(pageComponent, data);
+        } = await renderComponent(pageComponent, data);
 
         /** @type {any} */(this).addDependencies(inputPath, [...renderedCSSDeps, ...renderedJSDeps, ...renderedHTMLDeps]);
 
