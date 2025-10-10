@@ -130,16 +130,35 @@ export default function Plant({ dataEntry }) {
     </section>
     <${LightRequirementSection} lightRequirement=${dataEntry.light} />
     <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
-    ${hasDistributionData ? html`<svg xmlns="http://www.w3.org/2000/svg" width="1701.78" height="1695.51" id="map">
-      <style>
-      use {
-        color: var(--brand-primary);
-        ${dataEntry.distribution.US?.map((state) => `--us-${state.toLowerCase()}: currentColor;`).join("\n") ?? ""}
-        ${dataEntry.distribution.CA?.map((prov) => `--ca-${prov.toLowerCase()}: currentColor;`).join("\n") ?? ""}
-      }
-      </style>
-      <use href="/US-CA-map.svg#map"></use>
-    </svg>` : ""}
+    ${hasDistributionData ? html`
+    <section>
+      <h2>Distribution</h2>
+      <svg xmlns="http://www.w3.org/2000/svg" width="1701.78" height="1695.51" id="map" aria-hidden>
+        <style>
+        use {
+          color: var(--brand-primary);
+          ${dataEntry.distribution.US?.map((state) => `--us-${state.toLowerCase()}: currentColor;`).join("\n") ?? ""}
+          ${dataEntry.distribution.CA?.map((prov) => `--ca-${prov.toLowerCase()}: currentColor;`).join("\n") ?? ""}
+        }
+        </style>
+        <use href="/US-CA-map.svg?v=1#map"></use>
+      </svg>
+      <ul>
+        ${(dataEntry.distribution.US?.length ?? 0) > 0 ? html`
+          <li>United States:
+            <ul>
+            ${dataEntry.distribution.US?.map((s) => html`<li key=${s}>${s}</li>`)}
+            </ul>
+          </li>
+        `: ""}
+        ${(dataEntry.distribution.CA?.length ?? 0) > 0 ? html`
+          <li>Canada:
+            <ul>
+            ${dataEntry.distribution.CA?.map((p) => html`<li key=${p}>${p}</li>`)}
+            </ul>
+          </li>` : ""}
+      </ul>
+    </section>` : ""}
     </main>
   <//>`;
 }
@@ -200,6 +219,7 @@ Plant.css = css`
   }
 
   #map {
+    width: 100%;
     height: auto;
   }
 `;
