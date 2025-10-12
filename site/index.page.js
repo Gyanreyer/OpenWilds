@@ -26,4 +26,19 @@ IndexPage.css = css`
     flex-direction: column;
     row-gap: 0.25lh;
   }
+
+  header,
+  main,
+  footer {
+    padding-inline: 16px;
+    padding-block: 32px;
+    overflow-x: clip;
+
+    & > * {
+      display: block;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+    }
+  }
 `;
