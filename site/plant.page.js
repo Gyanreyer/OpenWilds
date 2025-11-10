@@ -2,17 +2,15 @@ import { parse as parseYaml } from "yaml";
 import Image from '@11ty/eleventy-img';
 import { readFile, glob } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
-import { html } from "#site-lib/html.js";
-import { css } from "#site-lib/css.js";
-import { bundle } from "#site-lib/bundle.js";
+import { html, css } from "yeti-js";
 
-import Base from "#site-layouts/base.layout.js";
+import { BaseLayout } from "#site-layouts/base.layout.js";
 import { BloomColorSection } from "#site-components/plant/BloomColorSection.component.js";
 import { LightRequirementSection } from "#site-components/plant/LightRequirementSection.component.js";
 import { MoistureRequirementSection } from "#site-components/plant/MoistureRequirementSection.component.js";
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
-import { resolve } from "node:path";
 
 /**
  * @import { PlantData } from "./types/plantData.js";
@@ -79,13 +77,15 @@ export const config = {
 };
 
 /**
- * @param {Object} props
- * @param {PlantData} props.dataEntry
+  * @import { YetiPageComponent } from 'yeti-js';
+  * @type {YetiPageComponent<{
+  *  dataEntry: PlantData;
+  * }>}
  */
-export default function Plant({ dataEntry }) {
+const PlantPage = ({ dataEntry }) => {
   const hasDistributionData = (dataEntry.distribution.US?.length ?? 0) > 0 || (dataEntry.distribution.CA?.length ?? 0) > 0;
 
-  return html`<${Base}>
+  return html`<${BaseLayout}>
     <header>
       <div>
         <h1>${dataEntry.common_names[0]}</h1>
@@ -165,8 +165,8 @@ export default function Plant({ dataEntry }) {
   <//>`;
 }
 
-Plant.css = css`
-  ${bundle("plant")}
+PlantPage.css = css`
+  ${css.bundle("plant")}
   #plant-images {
     display: flex;
     list-style: none;
@@ -280,3 +280,5 @@ Plant.css = css`
     }
   }
 `;
+
+export default PlantPage;

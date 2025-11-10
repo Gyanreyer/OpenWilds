@@ -11,7 +11,6 @@
   "author": "Ryan Geyer",
   "license": "Unlicense",
   "imports": {
-    "#site-lib/*": "./site/_lib/*",
     "#site-components/*": "./site/_components/*",
     "#site-layouts/*": "./site/_layouts/*",
     "#site-utils/*": "./site/_utils/*"
@@ -33,6 +32,7 @@
     "better-sqlite3": "^12.2.0",
     "htm": "^3.1.1",
     "parse5": "^8.0.0",
-    "yaml": "^2.8.0"
+    "yaml": "^2.8.0",
+    "yeti-js": "^0.0.2"
   }
 }

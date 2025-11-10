@@ -1,6 +1,4 @@
-import { bundle } from "#site-lib/bundle.js";
-import { css } from "#site-lib/css.js";
-import { html } from "#site-lib/html.js";
+import { html, css } from "yeti-js";
 
 /**
  * @import { BloomColor } from '../../types/plantData';
@@ -24,7 +22,7 @@ export function BloomColorSection({
 }
 
 BloomColorSection.css = css`
-  ${bundle("plant")}
+  ${css.bundle("plant")}
   #bloom-color-list {
     display: flex;
     flex-direction: column;

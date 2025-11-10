@@ -1,12 +1,14 @@
-import { html } from "./_lib/html.js";
+import { html, css } from "yeti-js";
 
-import Base from "./_layouts/base.layout.js";
+import { BaseLayout } from "./_layouts/base.layout.js";
 import { SearchBar } from "#site-components/SearchBar/SearchBar.component.js";
-import { css } from "#site-lib/css.js";
-import { bundle } from "#site-lib/bundle.js";
 
-export default function IndexPage({ ...data }) {
-  return html`<${Base}>
+/**
+ * @import { YetiPageComponent } from 'yeti-js';
+ * @type {YetiPageComponent}
+ */
+const IndexPage = () => {
+  return html`<${BaseLayout}>
     <header>
       <div>
         <h1>OpenWilds</h1>
@@ -20,7 +22,7 @@ export default function IndexPage({ ...data }) {
 }
 
 IndexPage.css = css`
-  ${bundle("index")}
+  ${css.bundle("index")}
   header div {
     display: flex;
     flex-direction: column;
@@ -42,3 +44,5 @@ IndexPage.css = css`
     }
   }
 `;
+
+export default IndexPage;

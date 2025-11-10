@@ -1,22 +1,18 @@
-import { html } from '#site-lib/html.js';
-import { css } from '#site-lib/css.js';
-import { getScopedComponentID } from '#site-lib/scid.js';
-import { bundle } from '#site-lib/bundle.js';
-
-const scid = getScopedComponentID();
+import { html, css } from 'yeti-js';
 
 /**
  * @param {Object} props
  * @param {number} props.low
  * @param {number} props.high
+ * @param {string} [props.className]
  */
 export function PlantDataRangeMeter({
-  low, high, ...attrs
+  low, high, className = "", ...attrs
 }) {
   return html`
     <div
       style="--low: ${low}; --high: ${high}"
-      data-scid=${scid}
+      class="${`plant-data-range-meter${className ? ` ${className}` : ""}`}"
       ...${attrs}
     >
       <div class="meter-fill"></div>
@@ -25,8 +21,8 @@ export function PlantDataRangeMeter({
 }
 
 PlantDataRangeMeter.css = css`
-  ${bundle("plant")}
-  [data-scid="${scid}"] {
+  ${css.bundle("plant")}
+  .plant-data-range-meter {
     position: relative;
     width: 100%;
     height: 1rem;

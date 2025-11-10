@@ -1,6 +1,4 @@
-import { bundle } from "#site-lib/bundle.js";
-import { css } from "#site-lib/css.js";
-import { html } from "#site-lib/html.js";
+import { html, css } from 'yeti-js';
 import { PlantDataRangeMeter } from "./PlantDataRangeMeter.component.js";
 
 /**
@@ -39,7 +37,7 @@ export function LightRequirementSection({
 }
 
 LightRequirementSection.css = css`
-  ${bundle("plant")}
+  ${css.bundle("plant")}
   #light-meter {
     --grad: linear-gradient(
       to right,

@@ -1,18 +1,13 @@
-import { bundle } from "#site-lib/bundle.js";
-import { css } from "#site-lib/css.js";
-import { html } from "#site-lib/html.js";
+import { html, css, js } from 'yeti-js';
 
 /**
- * @import {Children} from "#site-lib/html.js";
+ * @import { YetiComponent } from 'yeti-js';
+ * @type {YetiComponent<{
+ *  title?: string,
+ *  description?: string,
+ * }>}
  */
-
-/**
- * @param {Object} props
- * @param {string} props.title
- * @param {string} props.description
- * @param {Children} props.children
- */
-export default function BaseLayout({ title = "OpenWilds", description = "An open-source database of plants native to North America.", children }) {
+export const BaseLayout = ({ title = "OpenWilds", description = "An open-source database of plants native to North America.", children }) => {
   return html`
   <html lang="en">
     <head>
@@ -29,8 +24,8 @@ export default function BaseLayout({ title = "OpenWilds", description = "An open
 
       <meta name="generator" content="Eleventy v3.1.2" />
       <meta property="og:type" content="website" />
-      <script src="${bundle.src("*")}" type="module" async></script>
-      <link rel="stylesheet" href="${bundle.src("*")}" />
+      <script src="${js.src("*")}" type="module" async></script>
+      <link rel="stylesheet" href="${css.src("*")}" />
     </head>
     <body>
       ${children}
@@ -39,5 +34,5 @@ export default function BaseLayout({ title = "OpenWilds", description = "An open
 }
 
 BaseLayout.css = css`
-  ${bundle.import("./reset.css")}
+  ${css.import("./reset.css")}
 `;

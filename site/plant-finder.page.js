@@ -6,14 +6,16 @@
 // - Life cycle
 // - State
 // - Name
-import { bundle } from "#site-lib/bundle.js";
-import { css } from "#site-lib/css.js";
-import { html } from "#site-lib/html.js";
+import { html } from "yeti-js";
 
-import Base from "./_layouts/base.layout.js";
+import { BaseLayout } from "./_layouts/base.layout.js";
 
-export default function PlantFinderPage() {
-  return html`<${Base} title="Plant Finder - OpenWilds" description="Find the right native plants for you based on your needs.">
+/**
+ * @import { YetiPageComponent } from 'yeti-js';
+ * @type {YetiPageComponent}
+ */
+const PlantFinderPage = () => {
+  return html`<${BaseLayout} title="Plant Finder - OpenWilds" description="Find the right native plants for you based on your needs.">
     <header>
       <div>
         <h1>Plant Finder</h1>
@@ -25,3 +27,4 @@ export default function PlantFinderPage() {
     </main>
   <//>`;
 }
+export default PlantFinderPage;

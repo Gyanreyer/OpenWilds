@@ -1,6 +1,4 @@
-import { html } from "#site-lib/html.js";
-import { js } from "#site-lib/js.js";
-import { bundle } from "#site-lib/bundle.js";
+import { html, js } from 'yeti-js';
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -35,5 +33,5 @@ const packageJSONVersion = JSON.stringify(JSON.parse(readFileSync(packageJSONPat
 
 SearchBar.js = js`
   window.__SEARCH_DB_VERSION = ${packageJSONVersion};
-  ${bundle.import("./search-bar.js")}
+  ${js.import("./search-bar.js")}
 `;

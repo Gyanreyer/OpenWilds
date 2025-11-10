@@ -1,8 +1,13 @@
-import { html } from "#site-lib/html.js";
-import Base from "#site-layouts/base.layout.js";
+import { html } from "yeti-js";
 
-export default function NotFoundPage() {
-  return html`<${Base} title="404 - Page Not Found" description="The page you are looking for does not exist.">
+import { BaseLayout } from "#site-layouts/base.layout.js";
+
+/**
+ * @import { YetiPageComponent } from 'yeti-js';
+ * @type {YetiPageComponent}
+ */
+const NotFoundPage = () => {
+  return html`<${BaseLayout} title="404 - Page Not Found" description="The page you are looking for does not exist.">
     <header>
       <div>
         <h1>404 - Page Not Found</h1>
@@ -14,3 +19,5 @@ export default function NotFoundPage() {
     </main>
   <//>`;
 }
+
+export default NotFoundPage;
