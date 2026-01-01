@@ -2,6 +2,7 @@ import { html, css } from "yeti-js";
 
 import { BaseLayout } from "./_layouts/base.layout.js";
 import { SearchBar } from "#site-components/SearchBar/SearchBar.component.js";
+import { RangeSelector } from "#site-components/RangeSelector/RangeSelector.component.js";
 
 /**
  * @import { YetiPageComponent } from 'yeti-js';
@@ -17,6 +18,7 @@ const IndexPage = () => {
     </header>
     <main>
       <${SearchBar} />
+      <${RangeSelector} min=${0} max=${100} defaultLowerValue=${20} defaultUpperValue=${80} />
     </main>
   <//>`;
 }
