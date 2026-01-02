@@ -27,13 +27,15 @@ export const RangeSelector = ({
 
   return html`
     <range-selector>
-      <div class="lower-wrapper">
-        <input type="range" class="lower" name="range" min="${min}" max="${max}" value="${defaultLowerValue}" />
+      <div class="track">
+        <div class="lower-wrapper">
+          <input type="range" class="lower" name="range" min="${min}" max="${max}" value="${defaultLowerValue}" />
+        </div>
+        <div class="upper-wrapper">
+          <input type="range" class="upper" name="range" min="${min}" max="${max}" value="${defaultUpperValue}" />
+        </div>
+        <div class="track-selected"></div>
       </div>
-      <div class="upper-wrapper">
-        <input type="range" class="upper" name="range" min="${min}" max="${max}" value="${defaultUpperValue}" />
-      </div>
-      <div class="track"></div>
     </range-selector>
   `;
 }
