@@ -1,3 +1,5 @@
+const UNINITIALIZED_SYMBOL = Symbol.for("uninitialized");
+
 window.customElements.define("range-selector", class RangeSelectorElement extends HTMLElement {
   static styles = /*css*/`
     range-selector {
@@ -37,12 +39,16 @@ window.customElements.define("range-selector", class RangeSelectorElement extend
       }
 
       .lower-wrapper {
-        left: 0;
+        /** Add padded gap to avoid cutting off left edge of range thumb */
+        inset-inline-start: calc(-1 * var(--track-height));
+        padding-inline-start: var(--track-height);
         width: calc(100% * (var(--middle-pt) - var(--min)) / var(--range));
       }
 
       .upper-wrapper {
-        right: 0;
+        /** Add padded gap to avoid cutting off right edge range thumb */
+        inset-inline-end: calc(-1 * var(--track-height));
+        padding-inline-end: var(--track-height);
         width: calc(100% * (var(--max) - var(--middle-pt)) / var(--range));
       }
 
@@ -103,6 +109,20 @@ window.customElements.define("range-selector", class RangeSelectorElement extend
       .upper-wrapper:has(:focus-visible) + .track-selected::after {
         outline: 2px solid var(--positive);
       }
+
+      .value-label {
+        position: absolute;
+        top: 100%;
+        translate: -50% 4px;
+
+        &.lower {
+          left: calc(100% * (var(--lower-value) - var(--min)) / var(--range));
+        }
+
+        &.upper {
+          left: calc(100% * (var(--upper-value) - var(--min)) / var(--range));
+        }
+      }
     }
   `;
 
@@ -136,37 +156,104 @@ window.customElements.define("range-selector", class RangeSelectorElement extend
     return el;
   }
 
+  /**
+   * @type {{[k: string]: string}|typeof UNINITIALIZED_SYMBOL|null}
+   */
+  #cachedDataListOptions = UNINITIALIZED_SYMBOL;
+  get dataListOptions() {
+    if (this.#cachedDataListOptions === UNINITIALIZED_SYMBOL) {
+      this.#cachedDataListOptions = null;
+      const dataListElement = this.querySelector('datalist');
+      if (dataListElement) {
+        this.#cachedDataListOptions = {};
+        for (const optionElement of dataListElement.querySelectorAll('option')) {
+          const label = optionElement.label;
+          if (label) {
+            const value = (optionElement.value);
+            this.#cachedDataListOptions[value] = label;
+          }
+        }
+      }
+    }
+
+    return this.#cachedDataListOptions;
+  }
+
+  /**
+   * @type {HTMLSpanElement|null}
+   */
+  #cachedLowerValueLabelElement = null;
+  get lowerValueLabelElement() {
+    const el = this.#cachedLowerValueLabelElement ??= this.querySelector('.value-label.lower');
+    if (!el) {
+      throw new Error('Lower value label element not found');
+    }
+    return el;
+  }
+  /**
+   * @type {HTMLSpanElement|null}
+   */
+  #cachedUpperValueLabelElement = null;
+  get upperValueLabelElement() {
+    const el = this.#cachedUpperValueLabelElement ??= this.querySelector('.value-label.upper');
+    if (!el) {
+      throw new Error('Upper value label element not found');
+    }
+    return el;
+  }
+
   connectedCallback() {
     this.style.setProperty('--min', this.lowerRangeInput.min);
     this.style.setProperty('--max', this.upperRangeInput.max);
     this.style.setProperty('--lower-value', this.lowerRangeInput.value);
     this.style.setProperty('--upper-value', this.upperRangeInput.value);
 
-    this.lowerRangeInput.addEventListener('input', () => {
-      let lowerValue = this.lowerRangeInput.value;
+
+    if (this.dataListOptions) {
+      const lowerValue = this.lowerRangeInput.value;
       const upperValue = this.upperRangeInput.value;
-      if (parseFloat(lowerValue) >= parseFloat(upperValue)) {
+
+      const lowerLabel = this.dataListOptions[lowerValue] ?? lowerValue;
+      const upperLabel = this.dataListOptions[upperValue] ?? upperValue;
+
+      this.lowerRangeInput.ariaValueText = lowerLabel;
+      this.upperRangeInput.ariaValueText = upperLabel;
+
+      this.lowerValueLabelElement.textContent = lowerLabel;
+      this.upperValueLabelElement.textContent = upperLabel;
+    }
+
+    const onRangeInputChange = () => {
+      let lowerValue = this.lowerRangeInput.value;
+      let upperValue = this.upperRangeInput.value;
+
+      const parsedLower = Number(lowerValue);
+      const parsedUpper = Number(upperValue);
+      if (parsedLower >= parsedUpper) {
         lowerValue = upperValue;
         this.lowerRangeInput.value = lowerValue;
-      }
-      this.upperRangeInput.ariaValueMin = lowerValue;
-      this.lowerRangeInput.ariaValueMax = upperValue;
-
-      this.style.setProperty('--lower-value', lowerValue);
-      this.style.setProperty('--upper-value', upperValue);
-    });
-
-    this.upperRangeInput.addEventListener('input', () => {
-      let upperValue = this.upperRangeInput.value;
-      const lowerValue = this.lowerRangeInput.value;
-      if (parseFloat(upperValue) <= parseFloat(lowerValue)) {
+      } else if (parsedUpper <= parsedLower) {
         upperValue = lowerValue;
         this.upperRangeInput.value = upperValue;
       }
+
       this.upperRangeInput.ariaValueMin = lowerValue;
       this.lowerRangeInput.ariaValueMax = upperValue;
+
+      const lowerLabel = this.dataListOptions?.[lowerValue] ?? lowerValue;
+      const upperLabel = this.dataListOptions?.[upperValue] ?? upperValue;
+
+      this.lowerRangeInput.ariaValueText = lowerLabel;
+      this.upperRangeInput.ariaValueText = upperLabel;
+
+      this.lowerValueLabelElement.textContent = lowerLabel;
+      this.upperValueLabelElement.textContent = upperLabel;
+
       this.style.setProperty('--lower-value', lowerValue);
       this.style.setProperty('--upper-value', upperValue);
-    });
+    };
+
+    this.lowerRangeInput.addEventListener('input', onRangeInputChange);
+    this.upperRangeInput.addEventListener('input', onRangeInputChange);
   }
 });

@@ -18,7 +18,20 @@ const IndexPage = () => {
     </header>
     <main>
       <${SearchBar} />
-      <${RangeSelector} min=${0} max=${100} defaultLowerValue=${20} defaultUpperValue=${80} />
+      <${RangeSelector} name="bloom-time" min=${1} max=${12} minLabel="Start Month" maxLabel="End Month" dataList=${[
+      { value: 1, label: "Jan" },
+      { value: 2, label: "Feb" },
+      { value: 3, label: "Mar" },
+      { value: 4, label: "Apr" },
+      { value: 5, label: "May" },
+      { value: 6, label: "Jun" },
+      { value: 7, label: "Jul" },
+      { value: 8, label: "Aug" },
+      { value: 9, label: "Sep" },
+      { value: 10, label: "Oct" },
+      { value: 11, label: "Nov" },
+      { value: 12, label: "Dec" },
+    ]} />
     </main>
   <//>`;
 }
