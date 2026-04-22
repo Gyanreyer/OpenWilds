@@ -4,8 +4,8 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: April
-  end: June
+  start: 4
+  end: 6
 bloom_color:
   - name: Purple
     hex: "#6E58AC"
@@ -14,52 +14,11 @@ bloom_color:
   - name: Yellow
     hex: "#F7C509"
 height:
-  min: 6in
-  max: 12in
+  min: 6
+  max: 12
 light:
   min: 3
   max: 5
 moisture:
   min: 2
   max: 4
-distribution:
-  CA:
-    - AB
-    - BC
-    - NT
-    - ON
-    - SK
-  US:
-    - AL
-    - AR
-    - AZ
-    - CO
-    - DE
-    - FL
-    - GA
-    - IA
-    - ID
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - MI
-    - MO
-    - MS
-    - NC
-    - NE
-    - NJ
-    - NM
-    - NY
-    - OH
-    - OK
-    - PA
-    - SC
-    - SD
-    - TN
-    - TX
-    - VA
-    - WV

@@ -6,60 +6,17 @@ common_names:
 category: Shrub
 life_cycle: Perennial
 bloom_time:
-  start: May
-  end: June
+  start: 5
+  end: 6
 bloom_color:
-  name: White
-  hex: "#E4E2EC"
+  - name: White
+    hex: "#E4E2EC"
 height:
-  min: 5ft
-  max: 9ft
+  min: 60
+  max: 108
 light:
   min: 3
   max: 5
 moisture:
   min: 2
   max: 4
-distribution:
-  US:
-    - AL
-    - AR
-    - CO
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - IL
-    - IN
-    - KS
-    - KY
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - NC
-    - ND
-    - NE
-    - NH
-    - NJ
-    - NY
-    - OH
-    - OK
-    - PA
-    - RI
-    - SC
-    - SD
-    - TN
-    - VA
-    - VT
-    - WI
-    - WV
-  CA:
-    - MB
-    - NB
-    - NS
-    - ON
-    - QC

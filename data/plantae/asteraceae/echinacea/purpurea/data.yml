@@ -4,50 +4,38 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: July
-  end: September
+  start: 7
+  end: 9
 bloom_color:
-  name: Purple
-  hex: "#F06CE7"
+  - name: Purple
+    hex: "#F06CE7"
 height:
-  min: 4ft
-  max: 4ft
+  min: 48
+  max: 48
 light:
   min: 3
   max: 5
 moisture:
   min: 2
   max: 4
-distribution:
-  US:
-    - AL
-    - AR
-    - CO
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MD
-    - MI
-    - MO
-    - MS
-    - NC
-    - NJ
-    - NY
-    - OH
-    - OK
-    - PA
-    - SC
-    - TN
-    - TX
-    - VA
-    - WI
-    - WV
-  CA:
-    - ON
+images:
+  - local_path: images/01__2742128633_30e3ed0689_k.jpg
+    alt: A large drift of purple coneflowers (Echinacea purpurea). The flowers have pinkish-purple petals and spiky brown buds which subtly taper, suggesting the cone shape which gave them their name. This photo was taken at the New Hartford Public Library in New Hartford, NY.
+    license: CC-BY-2.0
+    creator_name: BarefootGardener
+    creator_url: https://www.flickr.com/photos/29008606@N04
+    source: Flickr
+    source_url: https://www.flickr.com/photos/29008606@N04/2742128633
+  - local_path: images/02__PXL_20250705_144813578.jpg
+    alt: A close-up shot of a bumblebee collecting nectar from a purple coneflower (Echinacea purpurea). You can see a great deal of detail in the flower bud, revealing a large number of subtly curved spikes radiating out from the center, covered in light yellow specs of pollen.
+    license: CC-BY-4.0
+    creator_name: Ryan Geyer
+    creator_url: https://geyer.dev
+    source: Other
+  - local_path: images/03__5735318698_0fb0fcf4b6_o.jpg
+    alt: A drift of blooming Purple coneflowers (Echinacea purpurea) in a garden setting. Some cacti and other plants can be seen in the background. This photo was taken at the Lady Bird Johnson Wildflower Center in Austin, Texas.
+    license: CC-BY-2.0
+    creator_name: ejmc
+    creator_url: https://www.flickr.com/photos/31821378@N00
+    source: Flickr
+    source_url: https://www.flickr.com/photos/31821378@N00/5735318698

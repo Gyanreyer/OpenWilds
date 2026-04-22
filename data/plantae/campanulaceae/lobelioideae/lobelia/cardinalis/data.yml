@@ -5,64 +5,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: August
-  end: October
+  start: 8
+  end: 10
 bloom_color:
-  name: Red
-  hex: "#E60008"
+  - name: Red
+    hex: "#E60008"
 height:
-  min: 3ft
-  max: 5ft
+  min: 36
+  max: 60
 light:
   min: 3
   max: 5
 moisture:
   min: 4
   max: 5
-distribution:
-  US:
-    - AL
-    - AR
-    - AZ
-    - CA
-    - CO
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - NC
-    - NE
-    - NH
-    - NJ
-    - NM
-    - NV
-    - NY
-    - OH
-    - OK
-    - PA
-    - RI
-    - SC
-    - TN
-    - TX
-    - UT
-    - VA
-    - VT
-    - WI
-    - WV
-  CA:
-    - NB
-    - ON
-    - QC

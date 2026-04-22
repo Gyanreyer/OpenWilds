@@ -13,7 +13,8 @@ import { MoistureRequirementSection } from "#site-components/plant/MoistureRequi
 import { eleventyImageConfig } from "#site-utils/eleventyImageConfig.js";
 
 /**
- * @import { PlantData } from "./types/plantData.js";
+ * @import { PlantData, BuiltImage } from "./types/plantData.js";
+ * @typedef {Omit<PlantData, "images"> & { permalink: string; builtImages: BuiltImage[] }} PlantPageData
  */
 
 const baseDataFileDirectoryPath = fileURLToPath(import.meta.resolve("../data/"));
@@ -21,9 +22,7 @@ const dataEntryPathsIterator = await glob("plantae/**/data.yml", {
   cwd: baseDataFileDirectoryPath,
 });
 
-/**
- * @type {PlantData[]}
- */
+/** @type {PlantPageData[]} */
 const dataEntries = [];
 
 for await (const relativeEntryPath of dataEntryPathsIterator) {
@@ -32,34 +31,38 @@ for await (const relativeEntryPath of dataEntryPathsIterator) {
 
   const dataEntryDirectory = path.slice(0, -"data.yml".length);
 
-  const imagePaths = await glob(["images/*.jpg", "images/*.jpeg", "images/*.png", "images/*.webp"], {
-    cwd: dataEntryDirectory,
-  });
+  /** @type {PlantData} */
+  const yamlData = parseYaml(fileContents);
 
-  const images = [];
-  for await (const relativeImagePath of imagePaths) {
-    const imagePath = resolve(dataEntryDirectory, relativeImagePath);
+  /** @type {BuiltImage[]} */
+  const builtImages = [];
+  for (const imageEntry of yamlData.images ?? []) {
+    const imagePath = resolve(dataEntryDirectory, imageEntry.local_path);
     const result = await Image(imagePath, eleventyImageConfig);
-
-    const imageMetdata = JSON.parse(await readFile(
-      `${imagePath}.meta.json`,
-      "utf8"
-    ));
-
-    images.push({
+    builtImages.push({
       ...result,
-      meta: imageMetdata,
+      meta: imageEntry,
     });
   }
 
   dataEntries.push({
-    ...parseYaml(fileContents),
-    permalink: dataEntryDirectory.slice(
-      baseDataFileDirectoryPath.length,
-    ),
-    images,
+    ...yamlData,
+    permalink: dataEntryDirectory.slice(baseDataFileDirectoryPath.length),
+    builtImages,
   });
 }
+
+const MONTH_NAMES = [
+  "", "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/**
+ * Render inches as a short "N"/"N–M\"" form.
+ * @param {{min: number; max: number}} range
+ */
+const formatInches = ({ min, max }) =>
+  min === max ? `${min}"` : `${min}–${max}"`;
 
 export const config = {
   pagination: {
@@ -68,23 +71,17 @@ export const config = {
     alias: "dataEntry",
   },
   dataEntries,
-  /**
-   * @param {{
-   *  dataEntry: PlantData;
-   * }} data
-   */
+  /** @param {{ dataEntry: PlantPageData }} data */
   permalink: (data) => data.dataEntry.permalink,
 };
 
 /**
   * @import { YetiPageComponent } from 'yeti-js';
   * @type {YetiPageComponent<{
-  *  dataEntry: PlantData;
+  *  dataEntry: PlantPageData;
   * }>}
  */
 const PlantPage = ({ dataEntry }) => {
-  const hasDistributionData = (dataEntry.distribution.US?.length ?? 0) > 0 || (dataEntry.distribution.CA?.length ?? 0) > 0;
-
   return html`<${BaseLayout}>
     <header>
       <div>
@@ -95,7 +92,7 @@ const PlantPage = ({ dataEntry }) => {
     <div class="content-wrapper">
       <main>
         <ul id="plant-images">
-          ${dataEntry.images.map((image) => {
+          ${dataEntry.builtImages.map((image) => {
     const imageTagImage = image.jpeg[image.jpeg.length - 1];
 
     return html`<li style="aspect-ratio: ${imageTagImage.width} / ${imageTagImage.height}">
@@ -105,7 +102,7 @@ const PlantPage = ({ dataEntry }) => {
                 <source type="image/jpeg" srcset="${image.jpeg.map((img) => img.srcset).join(",")}" />
                 <img src="${imageTagImage.url}" alt="${image.meta.alt}" width=${imageTagImage.width} height=${imageTagImage.height} loading="lazy" sizes="auto" />
               </picture>
-              <figcaption>Photo by <a href=${image.meta.creatorURL}>${image.meta.creatorName}</a></figcaption>
+              <figcaption>Photo by ${image.meta.creator_url ? html`<a href=${image.meta.creator_url}>${image.meta.creator_name}</a>` : image.meta.creator_name}</figcaption>
               </figure>
               </li>`;
   })}
@@ -120,47 +117,18 @@ const PlantPage = ({ dataEntry }) => {
         <h2>Life cycle</h2>
         <p>${dataEntry.life_cycle}</p>
       </section>
-      ${dataEntry.bloom_color ? html`<${BloomColorSection} colors=${Array.isArray(dataEntry.bloom_color) ? dataEntry.bloom_color : [dataEntry.bloom_color]} />` : null}
+      ${dataEntry.bloom_color && dataEntry.bloom_color.length > 0 ? html`<${BloomColorSection} colors=${dataEntry.bloom_color} />` : null}
       ${dataEntry.bloom_time ? html`<section>
         <h2>Bloom time</h2>
-        <p>${dataEntry.bloom_time.start} to ${dataEntry.bloom_time.end}</p>
+        <p>${MONTH_NAMES[dataEntry.bloom_time.start]} to ${MONTH_NAMES[dataEntry.bloom_time.end]}</p>
       </section>` : null}
       <section>
         <h2>Height</h2>
-        <p>${dataEntry.height.min === dataEntry.height.max ? dataEntry.height.max : `${dataEntry.height.min} to ${dataEntry.height.max}`}</p>
+        <p>${formatInches(dataEntry.height)}</p>
       </section>
       <${LightRequirementSection} lightRequirement=${dataEntry.light} />
       <${MoistureRequirementSection} moistureRequirement=${dataEntry.moisture} />
     </main>
-    ${hasDistributionData ? html`
-    <aside>
-      <svg xmlns="http://www.w3.org/2000/svg" width="1701.78" height="1695.51" id="map" aria-hidden>
-        <style>
-        use {
-          color: var(--brand-primary);
-          ${dataEntry.distribution.US?.map((state) => `--us-${state.toLowerCase()}: currentColor;`).join("\n") ?? ""}
-          ${dataEntry.distribution.CA?.map((prov) => `--ca-${prov.toLowerCase()}: currentColor;`).join("\n") ?? ""}
-        }
-        </style>
-        <use href="/US-CA-map.svg#map"></use>
-      </svg>
-      <h2 id="distribution-heading">Distribution</h2>
-      <ul aria-labelledby="distribution-heading" id="distribution-list">
-        ${(dataEntry.distribution.US?.length ?? 0) > 0 ? html`
-          <li>United States
-            <ul class="state-list">
-            ${dataEntry.distribution.US?.map((s) => html`<li>${s}</li>`)}
-            </ul>
-          </li>
-        `: ""}
-        ${(dataEntry.distribution.CA?.length ?? 0) > 0 ? html`
-          <li>Canada
-            <ul class="state-list">
-            ${dataEntry.distribution.CA?.map((p) => html`<li>${p}</li>`)}
-            </ul>
-          </li>` : ""}
-      </ul>
-    </aside>` : ""}
     </div>
   <//>`;
 }

@@ -5,59 +5,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: August
-  end: October
+  start: 8
+  end: 10
 bloom_color:
-  name: Blue
-  hex: "#694BED"
+  - name: Blue
+    hex: "#694BED"
 height:
-  min: 2ft
-  max: 4ft
+  min: 24
+  max: 48
 light:
   min: 3
   max: 5
 moisture:
   min: 4
   max: 5
-distribution:
-  US:
-    - AL
-    - AR
-    - CO
-    - CT
-    - DE
-    - GA
-    - IA
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - NC
-    - ND
-    - NE
-    - NH
-    - NJ
-    - NY
-    - OH
-    - OK
-    - PA
-    - SC
-    - SD
-    - TN
-    - TX
-    - VA
-    - VT
-    - WI
-    - WV
-    - WY
-  CA:
-    - MB
-    - ON

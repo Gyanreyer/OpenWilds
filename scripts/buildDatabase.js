@@ -6,7 +6,6 @@ import {
   resolve,
 } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import { heightStringToInches } from '../utils/heightStringToInches.js';
 import { fileURLToPath } from 'node:url';
 
 const distDir = fileURLToPath(import.meta.resolve("../dist/"));
@@ -30,6 +29,8 @@ db.pragma("cache_size = -20000");
 db.exec(/*sql*/`
   --- Drop existing tables if they exist to start from a clean slate
   DROP TABLE IF EXISTS plant_name_fts;
+  DROP TABLE IF EXISTS plant_us_counties;
+  DROP TABLE IF EXISTS plant_ca_divisions;
   DROP TABLE IF EXISTS plant_distribution_regions;
   DROP TABLE IF EXISTS distribution_regions;
   DROP TABLE IF EXISTS plant_bloom_colors;
@@ -76,22 +77,20 @@ db.exec(/*sql*/`
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
   );
 
-  --- Enumerates regions (country + state/province/territory) where plants are found
-  CREATE TABLE IF NOT EXISTS distribution_regions (
-    id            INTEGER   PRIMARY KEY AUTOINCREMENT,
-    country_code  TEXT      NOT NULL CHECK(LENGTH(country_code) = 2 AND country_code = UPPER(country_code)),
-    state_code    TEXT      NOT NULL CHECK(LENGTH(state_code) = 2 AND state_code = UPPER(state_code)),
-    UNIQUE(country_code, state_code)
+  --- US county-level native distribution. 5-digit FIPS (2 state + 3 county).
+  CREATE TABLE IF NOT EXISTS plant_us_counties (
+    plant_id    INTEGER   NOT NULL,
+    fips_code   TEXT      NOT NULL CHECK(LENGTH(fips_code) = 5),
+    PRIMARY KEY (plant_id, fips_code),
+    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
   );
 
-  --- Join table linking plants to their distribution regions
-  CREATE TABLE IF NOT EXISTS plant_distribution_regions (
-    plant_id       INTEGER   NOT NULL,
-    region_id      INTEGER   NOT NULL,
-    PRIMARY KEY (plant_id, region_id),
-
-    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE,
-    FOREIGN KEY (region_id) REFERENCES distribution_regions(id) ON DELETE CASCADE
+  --- Canadian census division-level native distribution. 4-digit StatCan CDUID (2 province + 2 CD).
+  CREATE TABLE IF NOT EXISTS plant_ca_divisions (
+    plant_id    INTEGER   NOT NULL,
+    cduid       TEXT      NOT NULL CHECK(LENGTH(cduid) = 4),
+    PRIMARY KEY (plant_id, cduid),
+    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
   );
 
   -- FTS5 virtual table for searching scientific and common names
@@ -213,44 +212,14 @@ const insertBloomColorsForPlant = db.transaction(
     }
   });
 
-const insertDistributionRegion = db.prepare(/*sql*/`
-    INSERT INTO distribution_regions (
-      country_code, state_code
-    ) VALUES (
-      ?, ?
-    ) RETURNING id;
+const insertPlantUSCounty = db.prepare(/*sql*/`
+  INSERT OR IGNORE INTO plant_us_counties (plant_id, fips_code)
+  VALUES (@plant_id, @fips_code);
 `);
 
-const getDistributionRegionID = db.prepare(/*sql*/`SELECT id FROM distribution_regions WHERE country_code = ? AND state_code = ?`);
-
-const upsertDistributionRegion = db.transaction(
-  /**
-   * @param {Object} params
-   * @param {string} params.country_code
-   * @param {string} params.state_code
-   * 
-   * @returns {{id: number}}
-   */
-  ({
-    country_code,
-    state_code
-  }) => {
-    const region = getDistributionRegionID.get(country_code, state_code);
-    if (region) {
-      return region;
-    }
-
-    return insertDistributionRegion.get(country_code, state_code);
-  });
-
-const insertPlantDistributionRegion = db.prepare(/*sql*/`
-  INSERT INTO plant_distribution_regions (
-    plant_id,
-    region_id
-  ) VALUES (
-    @plant_id,
-    @region_id
-  );
+const insertPlantCADivision = db.prepare(/*sql*/`
+  INSERT OR IGNORE INTO plant_ca_divisions (plant_id, cduid)
+  VALUES (@plant_id, @cduid);
 `);
 
 const insertIntoFTS = db.prepare(/*sql*/`
@@ -268,25 +237,12 @@ const insertPlantEntries = db.transaction(
    */
   (plantEntries) => {
     for (const entry of plantEntries) {
-      const lowHeight = heightStringToInches(entry.height.min);
-      const highHeight = heightStringToInches(entry.height.max);
+      const { min: lowHeight, max: highHeight } = entry.height;
+      const { min: lowLight, max: highLight } = entry.light;
+      const { min: lowMoisture, max: highMoisture } = entry.moisture;
 
-      const {
-        min: lowLight,
-        max: highLight
-      } = entry.light;
-
-      const {
-        min: lowMoisture,
-        max: highMoisture,
-      } = entry.moisture;
-
-      let bloomTimeStart = null;
-      let bloomTimeEnd = null;
-      if (entry.bloom_time) {
-        bloomTimeStart = new Date(`${entry.bloom_time.start}-1-01`).getMonth() + 1;
-        bloomTimeEnd = new Date(`${entry.bloom_time.end}-1-01`).getMonth() + 1;
-      }
+      const bloomTimeStart = entry.bloom_time?.start ?? null;
+      const bloomTimeEnd = entry.bloom_time?.end ?? null;
 
       const { id: plantID } = insertPlantEntry.get({
         path: entry.path,
@@ -323,30 +279,11 @@ const insertPlantEntries = db.transaction(
 
       insertBloomColorsForPlant({ plant_id: plantID, bloom_color: entry.bloom_color });
 
-      if (!entry.distribution) {
-        continue;
+      for (const fips of entry.distribution?.native_us_counties ?? []) {
+        insertPlantUSCounty.run({ plant_id: plantID, fips_code: fips });
       }
-
-      for (const countryCode in entry.distribution) {
-        const states = entry.distribution[/** @type {keyof PlantData["distribution"]} */(countryCode)];
-        if (!Array.isArray(states) || states.length === 0) {
-          // No states/provinces listed; skip
-          continue;
-        }
-        for (const stateCode of states) {
-          const normalizedCountryCode = countryCode.trim().toUpperCase();
-          const normalizedStateCode = stateCode.trim().toUpperCase();
-
-          const { id: regionID } = upsertDistributionRegion({
-            country_code: normalizedCountryCode,
-            state_code: normalizedStateCode,
-          });
-
-          insertPlantDistributionRegion.run({
-            plant_id: plantID,
-            region_id: regionID,
-          });
-        }
+      for (const cduid of entry.distribution?.native_ca_divisions ?? []) {
+        insertPlantCADivision.run({ plant_id: plantID, cduid });
       }
     }
   });

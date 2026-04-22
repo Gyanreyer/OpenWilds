@@ -1,11 +1,44 @@
-export type Month = "January" | "February" | "March" | "April" | "May" | "June" | "July" | "August" | "September" | "October" | "November" | "December";
+/**
+ * Site-facing re-export of the plant schema types.
+ *
+ * The source of truth lives in tools/new-entry/src/types.ts — this file
+ * keeps the import path `site/types/plantData.js` stable for site code.
+ *
+ * In addition to the raw schema, this file exports site-specific view types
+ * (e.g. the image shape produced by Eleventy's image pipeline at build time).
+ */
 
-export type OneThroughFive = 1 | 2 | 3 | 4 | 5;
+export type {
+  PlantData,
+  PlantCategory,
+  LifeCycle,
+  RootType,
+  DroughtTolerance,
+  SoilType,
+  Month,
+  OneThroughFive,
+  BloomTime,
+  BloomColor,
+  LightRange,
+  MoistureRange,
+  Toxicity,
+  Distribution,
+  ConservationStatus,
+  ConservationRank,
+  ImageEntry,
+  ImageLicense,
+  ImageSource,
+  SourceCitation,
+  IntRange,
+  NumRange,
+} from "../../tools/new-entry/src/types.js";
 
-export type USStateAbbreviation = "AL" | "AK" | "AZ" | "AR" | "CA" | "CO" | "CT" | "DE" | "FL" | "GA" | "HI" | "ID" | "IL" | "IN" | "IA" | "KS" | "KY" | "LA" | "ME" | "MD" | "MA" | "MI" | "MN" | "MS" | "MO" | "MT" | "NE" | "NV" | "NH" | "NJ" | "NM" | "NY" | "NC" | "ND" | "OH" | "OK" | "OR" | "PA" | "RI" | "SC" | "SD" | "TN" | "TX" | "UT" | "VT" | "VA" | "WA" | "WV" | "WI" | "WY";
-export type CAProvinceAbbreviation = "AB" | "BC" | "MB" | "NB" | "NL" | "NT" | "NS" | "NU" | "ON" | "PE" | "QC" | "SK" | "YT";
+// ---------------------------------------------------------------------------
+// Site-only view types (runtime image pipeline output, not in source YAML)
+// ---------------------------------------------------------------------------
 
-interface EleventyImageData {
+/** One rendition produced by `@11ty/eleventy-img`. */
+export interface EleventyImageData {
   format: "webp" | "jpeg";
   width: number;
   height: number;
@@ -17,81 +50,14 @@ interface EleventyImageData {
   size: number;
 }
 
-interface ImageMetadata {
-  license: string;
-  creatorName: string;
-  alt: string;
-  creatorURL?: string;
-  sourceURL?: string;
-}
+import type { ImageEntry as SchemaImageEntry } from "../../tools/new-entry/src/types.js";
 
-export interface ImageData {
+/**
+ * An image as consumed by the site's plant page: the schema entry plus the
+ * rendition data that `@11ty/eleventy-img` produces at build time.
+ */
+export interface BuiltImage {
+  meta: SchemaImageEntry;
   jpeg: EleventyImageData[];
   webp: EleventyImageData[];
-  meta: ImageMetadata;
-}
-
-export interface BloomColor {
-  /**
-   * Human-readable name of the color.
-   */
-  name: string;
-  /**
-   * Hex color code representing the bloom color for previewing.
-   */
-  hex: `#${string}`;
-}
-
-export type PlantCategory = "Tree" | "Shrub" | "Graminoid" | "Fern" | "Forb" | "Vine" | "Succulent";
-
-export interface PlantData {
-  scientific_name: string;
-  common_names: string[];
-  life_cycle: "Perennial" | "Annual" | "Biennial";
-  /**
-   * Object describing the range of months when the plant blooms.
-   * May not be present if the plant does not bloom or if the bloom time is not known.
-   */
-  bloom_time?: {
-    start: Month;
-    end: Month;
-  };
-  /**
-   * Object describing the plant's bloom color
-   * May not be present if the plant does not bloom or if the color is not known.
-   * May be a single color or an array of colors if the plant has multiple notable bloom colors.
-   * (ie, Wild Columbine flowers are primarily red, but also have notable yellow accents)
-   */
-  bloom_color?: BloomColor | BloomColor[];
-  /**
-   * Generally in format of "[number or dash-separated range] [feet|inches]", ie "3 feet", "4-8 inches"
-   */
-  height: {
-    min: `${number}${"in" | "ft"}`,
-    max: `${number}${"in" | "ft"}`,
-  };
-  /**
-   * Number or dash-separated range, scale is 1-5 where 1 is full shade and 5 is full sun
-   */
-  light: {
-    min: OneThroughFive;
-    max: OneThroughFive;
-  };
-  /**
-   * Number or dash-separated range, scale is 1-5 where 1 is dry and 5 is wet
-   */
-  moisture: {
-    min: OneThroughFive;
-    max: OneThroughFive;
-  };
-  /**
-   * State/province distribution data from USDA Plants database data for US and Canada
-   */
-  distribution: {
-    US?: USStateAbbreviation[];
-    CA?: CAProvinceAbbreviation[];
-  };
-  images: ImageData[];
-  permalink: string;
-  category: PlantCategory;
 }

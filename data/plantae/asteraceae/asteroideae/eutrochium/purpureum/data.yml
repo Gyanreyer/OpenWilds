@@ -5,55 +5,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: July
-  end: September
+  start: 7
+  end: 9
 bloom_color:
-  name: Pink
-  hex: "#E285C5"
+  - name: Pink
+    hex: "#E285C5"
 height:
-  min: 5ft
-  max: 7ft
+  min: 60
+  max: 84
 light:
   min: 3
   max: 5
 moisture:
   min: 3
   max: 5
-distribution:
-  US:
-    - AL
-    - AR
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - NC
-    - NE
-    - NH
-    - NJ
-    - NY
-    - OH
-    - OK
-    - PA
-    - RI
-    - SC
-    - TN
-    - VA
-    - VT
-    - WI
-    - WV
-  CA:
-    - ON

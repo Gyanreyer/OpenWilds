@@ -5,55 +5,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: July
-  end: October
+  start: 7
+  end: 10
 bloom_color:
-  name: White
-  hex: "#EFF8EF"
+  - name: White
+    hex: "#EFF8EF"
 height:
-  min: 3ft
-  max: 5ft
+  min: 36
+  max: 60
 light:
   min: 3
   max: 5
 moisture:
   min: 3
   max: 5
-distribution:
-  US:
-    - AL
-    - AR
-    - CT
-    - DE
-    - GA
-    - IA
-    - IL
-    - IN
-    - KY
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - NC
-    - NH
-    - NJ
-    - NY
-    - OH
-    - PA
-    - RI
-    - SC
-    - TN
-    - VA
-    - VT
-    - WI
-    - WV
-  CA:
-    - MB
-    - NB
-    - NS
-    - ON
-    - PE
-    - QC

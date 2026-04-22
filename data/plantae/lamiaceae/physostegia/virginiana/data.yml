@@ -5,65 +5,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: August
-  end: September
+  start: 8
+  end: 9
 bloom_color:
-  name: Pink
-  hex: "#E9A5FF"
+  - name: Pink
+    hex: "#E9A5FF"
 height:
-  min: 3ft
-  max: 4ft
+  min: 36
+  max: 48
 light:
   min: 3
   max: 5
 moisture:
   min: 3
   max: 5
-distribution:
-  US:
-    - AL
-    - AR
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - MT
-    - NC
-    - ND
-    - NE
-    - NH
-    - NJ
-    - NM
-    - NY
-    - OH
-    - OK
-    - PA
-    - RI
-    - SC
-    - SD
-    - TN
-    - TX
-    - UT
-    - VA
-    - VT
-    - WI
-    - WV
-  CA:
-    - MB
-    - NB
-    - NS
-    - ON
-    - QC

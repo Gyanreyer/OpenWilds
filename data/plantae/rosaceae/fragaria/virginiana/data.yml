@@ -5,83 +5,19 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: April
-  end: June
+  start: 4
+  end: 6
 bloom_color:
   - name: White
     hex: "#EBEDED"
   - name: Yellow
     hex: "#FADE11"
 height:
-  min: 4in
-  max: 8in
+  min: 4
+  max: 8
 light:
   min: 2
   max: 5
 moisture:
   min: 1
   max: 4
-distribution:
-  CA:
-    - AB
-    - BC
-    - MB
-    - NB
-    - NS
-    - NT
-    - NU
-    - ON
-    - PE
-    - QC
-    - SK
-    - YT
-  US:
-    - AK
-    - AL
-    - AR
-    - AZ
-    - CA
-    - CO
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - ID
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - MT
-    - NC
-    - ND
-    - NE
-    - NH
-    - NJ
-    - NM
-    - NV
-    - NY
-    - OH
-    - OK
-    - OR
-    - PA
-    - RI
-    - SC
-    - SD
-    - TN
-    - TX
-    - UT
-    - VA
-    - VT
-    - WA
-    - WI
-    - WV
-    - WY

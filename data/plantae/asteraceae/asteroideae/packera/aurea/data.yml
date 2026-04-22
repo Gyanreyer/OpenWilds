@@ -5,58 +5,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: April
-  end: June
+  start: 4
+  end: 6
 bloom_color:
-  name: Yellow
-  hex: "#E4CB0C"
+  - name: Yellow
+    hex: "#E4CB0C"
 height:
-  min: 1ft
-  max: 2ft
+  min: 12
+  max: 24
 light:
   min: 1
   max: 4
 moisture:
   min: 3
   max: 5
-distribution:
-  US:
-    - AL
-    - AR
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - IL
-    - IN
-    - KY
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - NC
-    - NH
-    - NJ
-    - NY
-    - OH
-    - OK
-    - PA
-    - RI
-    - SC
-    - TN
-    - TX
-    - VA
-    - VT
-    - WI
-    - WV
-  CA:
-    - MB
-    - NB
-    - NS
-    - ON
-    - PE
-    - QC

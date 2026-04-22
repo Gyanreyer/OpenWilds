@@ -8,73 +8,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: July
-  end: October
+  start: 7
+  end: 10
 bloom_color:
-  name: Yellow
-  hex: "#FBE70B"
+  - name: Yellow
+    hex: "#FBE70B"
 height:
-  min: 7ft
-  max: 7ft
+  min: 84
+  max: 84
 light:
   min: 1
   max: 5
 moisture:
   min: 3
   max: 4
-distribution:
-  US:
-    - AL
-    - AR
-    - AZ
-    - CO
-    - CT
-    - DE
-    - FL
-    - GA
-    - IA
-    - IO
-    - ID
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - MT
-    - NC
-    - ND
-    - NE
-    - NH
-    - NJ
-    - NM
-    - NY
-    - OH
-    - OK
-    - PA
-    - RI
-    - SC
-    - SD
-    - TN
-    - TX
-    - UT
-    - VA
-    - VT
-    - WA
-    - WI
-    - WV
-    - WY
-  CA:
-    - BC
-    - MB
-    - NB
-    - NS
-    - ON
-    - PE
-    - QC

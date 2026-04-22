@@ -6,59 +6,17 @@ common_names:
 category: Forb
 life_cycle: Perennial
 bloom_time:
-  start: July
-  end: September
+  start: 7
+  end: 9
 bloom_color:
-  name: Purple
-  hex: "#EC30FF"
+  - name: Purple
+    hex: "#EC30FF"
 height:
-  min: 2ft
-  max: 4ft
+  min: 24
+  max: 48
 light:
   min: 4
   max: 5
 moisture:
   min: 3
   max: 5
-distribution:
-  US:
-    - AL
-    - AR
-    - CT
-    - DE
-    - GA
-    - IA
-    - IL
-    - IN
-    - KS
-    - KY
-    - LA
-    - MA
-    - MD
-    - ME
-    - MI
-    - MN
-    - MO
-    - MS
-    - NC
-    - NE
-    - NH
-    - NJ
-    - NY
-    - OH
-    - OK
-    - PA
-    - RI
-    - SC
-    - TN
-    - UT
-    - VA
-    - VT
-    - WA
-    - WI
-    - WV
-  CA:
-    - NB
-    - NS
-    - ON
-    - QC
