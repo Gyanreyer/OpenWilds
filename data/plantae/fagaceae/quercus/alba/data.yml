@@ -1,0 +1,38 @@
+scientific_name: Quercus alba
+common_names:
+  - White Oak
+  - Eastern White Oak
+  - Stave Oak
+synonyms:
+  - Quercus candida
+  - Quercus nigrescens
+  - Quercus ramosa
+  - Quercus repanda
+  - Quercus retusa
+# category: Forb  # TODO: USDA GrowthHabits (Phase 3 source: usda-plants)
+# life_cycle: Perennial  # TODO: USDA Durations (Phase 3 source: usda-plants)
+# bloom_time: { start: 6, end: 8 }  # TODO: USDA 'Bloom Period' (Phase 3 source: usda-plants)
+# bloom_color: <TBD>  # TODO: literature / iNaturalist observations — reviewer fills
+# height: { min: 12, max: 24 }  # TODO: USDA 'Height at 20 Years' (Phase 3 source: usda-plants)
+# light: { min: 3, max: 5 }  # TODO: USDA 'Shade Tolerance' (Phase 3 source: usda-plants)
+# moisture: { min: 2, max: 4 }  # TODO: USDA 'Moisture Use' (Phase 3 source: usda-plants)
+# soil_ph: <TBD>  # TODO: USDA pH Min/Max (Phase 3 source: usda-plants)
+# drought_tolerance: <TBD>  # TODO: USDA 'Drought Tolerance' (Phase 3 source: usda-plants)
+# conservation_status: <TBD>  # TODO: NatureServe integration deferred
+# distribution: <TBD>  # TODO: county / CD distribution (Phase 4)
+# images: <TBD>  # TODO: iNaturalist image pipeline (Phase 5)
+sources:
+  - name: GBIF Backbone Taxonomy
+    url: https://www.gbif.org/species/2879737
+    accessed: 2026-04-23
+_meta:
+  generated_by: tools/new-entry
+  generated_at: 2026-04-23
+  sources:
+    scientific_name: GBIF
+    common_names: GBIF
+    synonyms: GBIF
+  confidence:
+    scientific_name: high
+    common_names: medium
+    synonyms: medium
