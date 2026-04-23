@@ -3,11 +3,10 @@
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
-    "baseUrl": ".",
     "target": "ESNext",
-    "module": "es2022",
+    "module": "nodenext",
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "maxNodeModuleJsDepth": 1,
     "allowSyntheticDefaultImports": true,
     "paths": {
