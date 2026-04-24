@@ -192,6 +192,14 @@ export interface DraftMeta {
 export interface PlantData {
   // --- Identity ---
   scientific_name: string;
+  /**
+   * The single name the UI should refer to the plant by. Must also appear
+   * as the first element of `common_names`. Kept as a separate field (rather
+   * than implied by `common_names[0]`) so the primary-vs-alternative
+   * distinction is explicit in the data and consumers don't rely on array
+   * ordering as a semantic signal.
+   */
+  primary_common_name: string;
   common_names: string[];
   synonyms?: string[];
 

@@ -1,0 +1,86 @@
+scientific_name: Liatris cylindracea
+primary_common_name: Cylindrical Blazing Star
+common_names:
+  - Cylindrical Blazing Star
+  - Cylindrical Blazing-Star
+  - Ontario Blazing Star
+  - Ontario Blazing-Star
+  - Barrel-Headed Gayfeather
+synonyms:
+  - Lacinaria cylindracea
+  - Lacinaria nervata
+  - Liatris flexuosa
+  - Liatris intermedia
+  - Liatris marginata
+  - Liatris monocephala
+  - Liatris nervata
+  - Liatris striata
+  - Liatris stricta
+category: Forb
+life_cycle: Perennial
+bloom_time:
+  start: 7
+  end: 9
+# bloom_color: [{ name: "Purple", hex: "#RRGGBB" }]  # TODO: Wildflower Flower Color="Purple" — reviewer adds hex
+height:
+  min: 0
+  max: 24
+light:
+  min: 4
+  max: 5
+moisture:
+  min: 1
+  max: 2
+# soil_ph: <TBD>  # TODO: USDA pH not available
+# root_type: <TBD>  # TODO: Wildflower Root Type not available; reviewer fills
+# drought_tolerance: <TBD>  # TODO: USDA 'Drought Tolerance' not available or 'None'
+# conservation_status: <TBD>  # TODO: NatureServe integration deferred
+# toxicity: <TBD>  # TODO: literature review needed (humans, pets, livestock)
+# distribution: <TBD>  # TODO: county / CD distribution (Phase 4)
+# images: <TBD>  # TODO: iNaturalist image pipeline (Phase 5)
+sources:
+  - name: GBIF Backbone Taxonomy
+    url: https://www.gbif.org/species/3104278
+    accessed: 2026-04-24
+  - name: USDA PLANTS Database
+    url: https://plants.usda.gov/plant-profile/LICY
+    accessed: 2026-04-24
+  - name: VASCAN (Database of Vascular Plants of Canada)
+    url: https://data.canadensys.net/vascan/taxon/Liatris%20cylindracea
+    accessed: 2026-04-24
+  - name: iNaturalist
+    url: https://www.inaturalist.org/taxa/164685
+    accessed: 2026-04-24
+  - name: Lady Bird Johnson Wildflower Center
+    url: https://www.wildflower.org/plants/result.php?id_plant=LICY
+    accessed: 2026-04-24
+_meta:
+  generated_by: tools/new-entry
+  generated_at: 2026-04-24
+  sources:
+    scientific_name: GBIF
+    primary_common_name: iNaturalist
+    common_names: GBIF+USDA+iNaturalist
+    synonyms: GBIF
+    category: USDA GrowthHabits + Wildflower Habit
+    life_cycle: USDA Durations + Wildflower Duration
+    bloom_time: iNaturalist phenology (150 flowering obs); Wildflower=8–8
+    height: Wildflower Size Notes="Up to about 2 feet tall."
+    light: Wildflower Light Requirement
+    moisture: Wildflower Soil Moisture
+  confidence:
+    scientific_name: high
+    primary_common_name: medium
+    common_names: high
+    category: high
+    life_cycle: high
+    bloom_time: low
+    height: high
+    light: high
+    moisture: high
+  usda_symbol: LICY
+  usda_native_regions:
+    - CAN
+    - L48
+  vascan_native_provinces:
+    - ON

@@ -37,22 +37,22 @@ drought_tolerance: Medium
 sources:
   - name: GBIF Backbone Taxonomy
     url: https://www.gbif.org/species/2879737
-    accessed: 2026-04-23
+    accessed: 2026-04-24
   - name: USDA PLANTS Database
     url: https://plants.usda.gov/plant-profile/QUAL
-    accessed: 2026-04-23
+    accessed: 2026-04-24
   - name: VASCAN (Database of Vascular Plants of Canada)
     url: https://data.canadensys.net/vascan/taxon/Quercus%20alba
-    accessed: 2026-04-23
+    accessed: 2026-04-24
   - name: iNaturalist
     url: https://www.inaturalist.org/taxa/54779
-    accessed: 2026-04-23
+    accessed: 2026-04-24
   - name: Lady Bird Johnson Wildflower Center
     url: https://www.wildflower.org/plants/result.php?id_plant=QUAL
-    accessed: 2026-04-23
+    accessed: 2026-04-24
 _meta:
   generated_by: tools/new-entry
-  generated_at: 2026-04-23
+  generated_at: 2026-04-24
   sources:
     scientific_name: GBIF
     primary_common_name: iNaturalist (confirmed by GBIF, USDA)

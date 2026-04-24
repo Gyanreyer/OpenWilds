@@ -9,6 +9,7 @@
     "moduleResolution": "nodenext",
     "maxNodeModuleJsDepth": 1,
     "allowSyntheticDefaultImports": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "#site-components/*": ["./site/_components/*"],
       "#site-layouts/*": ["./site/_layouts/*"],

@@ -1,58 +1,57 @@
-scientific_name: Quercus alba
-primary_common_name: White Oak
+scientific_name: Andropogon gerardi
+primary_common_name: Big Bluestem
 common_names:
-  - White Oak
-  - Eastern White Oak
-  - Stave Oak
+  - Big Bluestem
+  - Blue-Stem-Grass
+  - Turkeyfoot
+  - Tall Bluestem
+  - Bluejoint
 synonyms:
-  - Quercus candida
-  - Quercus nigrescens
-  - Quercus ramosa
-  - Quercus repanda
-  - Quercus retusa
-category: Tree
+  - Andropogon furcatus
+  - Sorghum provinciale
+category: Graminoid
 life_cycle: Perennial
 bloom_time:
-  start: 3
-  end: 5
-# bloom_color: [{ name: "Red", hex: "#RRGGBB" }, { name: "Yellow", hex: "#RRGGBB" }, { name: "Green", hex: "#RRGGBB" }, { name: "Brown", hex: "#RRGGBB" }]  # TODO: Wildflower Flower Color="Red, Yellow, Green, Brown" — reviewer adds hex
+  start: 7
+  end: 9
+# bloom_color: [{ name: "Red", hex: "#RRGGBB" }, { name: "Blue", hex: "#RRGGBB" }, { name: "Brown", hex: "#RRGGBB" }]  # TODO: Wildflower Flower Color="Red, Blue, Brown" — reviewer adds hex
 height:
-  min: 0
-  max: 1200
+  min: 48
+  max: 96
 light:
-  min: 1
+  min: 3
   max: 5
 moisture:
-  min: 1
+  min: 3
   max: 4
 soil_ph:
-  min: 4.5
-  max: 6.8
-# root_type: <TBD>  # TODO: Wildflower Root Type not available; reviewer fills
-drought_tolerance: Medium
+  min: 6.5
+  max: 8.5
+root_type: Fibrous
+drought_tolerance: High
 # conservation_status: <TBD>  # TODO: NatureServe integration deferred
 # toxicity: <TBD>  # TODO: USDA livestock toxicity="None" — reviewer fills humans/pets/livestock per literature
 # distribution: <TBD>  # TODO: county / CD distribution (Phase 4)
 # images: <TBD>  # TODO: iNaturalist image pipeline (Phase 5)
 sources:
   - name: GBIF Backbone Taxonomy
-    url: https://www.gbif.org/species/2879737
-    accessed: 2026-04-23
+    url: https://www.gbif.org/species/4932035
+    accessed: 2026-04-24
   - name: USDA PLANTS Database
-    url: https://plants.usda.gov/plant-profile/QUAL
-    accessed: 2026-04-23
+    url: https://plants.usda.gov/plant-profile/ANGE
+    accessed: 2026-04-24
   - name: VASCAN (Database of Vascular Plants of Canada)
-    url: https://data.canadensys.net/vascan/taxon/Quercus%20alba
-    accessed: 2026-04-23
+    url: https://data.canadensys.net/vascan/taxon/Andropogon%20gerardi
+    accessed: 2026-04-24
   - name: iNaturalist
-    url: https://www.inaturalist.org/taxa/54779
-    accessed: 2026-04-23
+    url: https://www.inaturalist.org/taxa/121968
+    accessed: 2026-04-24
   - name: Lady Bird Johnson Wildflower Center
-    url: https://www.wildflower.org/plants/result.php?id_plant=QUAL
-    accessed: 2026-04-23
+    url: https://www.wildflower.org/plants/result.php?id_plant=ANGE
+    accessed: 2026-04-24
 _meta:
   generated_by: tools/new-entry
-  generated_at: 2026-04-23
+  generated_at: 2026-04-24
   sources:
     scientific_name: GBIF
     primary_common_name: iNaturalist (confirmed by GBIF, USDA)
@@ -60,28 +59,32 @@ _meta:
     synonyms: GBIF
     category: USDA GrowthHabits + Wildflower Habit
     life_cycle: USDA Durations + Wildflower Duration
-    bloom_time: iNaturalist phenology (50 flowering obs); Wildflower=3–5, USDA=4–5
-    height: 'Wildflower Size Notes="Height to 100+ ft. Width 60 to 80 ft." (cross-ref: USDA Mature=1200in)'
+    bloom_time: iNaturalist phenology (390 flowering obs); Wildflower=8–11, USDA=6–8
+    height: 'Wildflower Size Notes="4-8 feet tall." (cross-ref: USDA Mature=84in)'
     light: Wildflower Light Requirement
     moisture: Wildflower Soil Moisture
     soil_ph: USDA 'pH, Minimum/Maximum'
     drought_tolerance: USDA 'Drought Tolerance'
+    root_type: Wildflower Root Type
   confidence:
-    scientific_name: high
+    scientific_name: medium
     primary_common_name: high
     common_names: high
     category: high
     life_cycle: high
-    bloom_time: low
+    bloom_time: medium
     height: high
     light: high
     moisture: high
     soil_ph: high
     drought_tolerance: high
-  usda_symbol: QUAL
+    root_type: high
+  usda_symbol: ANGE
   usda_native_regions:
     - CAN
     - L48
   vascan_native_provinces:
+    - MB
     - ON
     - QC
+    - SK

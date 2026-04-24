@@ -1,0 +1,98 @@
+scientific_name: Echinacea purpurea
+primary_common_name: Purple Coneflower
+common_names:
+  - Purple Coneflower
+  - Eastern Purple Coneflower
+  - Purple-Coneflower
+  - Broad-Leaved Purple Coneflower
+  - Purple Cone-Flower
+synonyms:
+  - Brauneria purpurea
+  - Echinacea intermedia
+  - Echinacea serotina
+  - Helichroa alba
+  - Helichroa amoena
+  - Helichroa crocea
+  - Helichroa elatior
+  - Helichroa fusca
+  - Helichroa fuscata
+  - Helichroa linnaeana
+  - Helichroa purpurea
+  - Helichroa uniflora
+  - Lepachys purpurea
+  - Rudbeckia aspera
+  - Rudbeckia hispida
+  - Rudbeckia purpurea
+  - Rudbeckia serotina
+category: Forb
+life_cycle: Perennial
+bloom_time:
+  start: 6
+  end: 9
+# bloom_color: [{ name: "Pink", hex: "#RRGGBB" }, { name: "Purple", hex: "#RRGGBB" }]  # TODO: Wildflower Flower Color="Pink, Purple" — reviewer adds hex
+height:
+  min: 0
+  max: 48
+light:
+  min: 3
+  max: 5
+moisture:
+  min: 1
+  max: 2
+soil_ph:
+  min: 6.5
+  max: 7.2
+root_type: Fibrous
+drought_tolerance: Low
+# conservation_status: <TBD>  # TODO: NatureServe integration deferred
+# toxicity: <TBD>  # TODO: USDA livestock toxicity="None" — reviewer fills humans/pets/livestock per literature
+# distribution: <TBD>  # TODO: county / CD distribution (Phase 4)
+# images: <TBD>  # TODO: iNaturalist image pipeline (Phase 5)
+sources:
+  - name: GBIF Backbone Taxonomy
+    url: https://www.gbif.org/species/3150935
+    accessed: 2026-04-24
+  - name: USDA PLANTS Database
+    url: https://plants.usda.gov/plant-profile/ECPU
+    accessed: 2026-04-24
+  - name: iNaturalist
+    url: https://www.inaturalist.org/taxa/48627
+    accessed: 2026-04-24
+  - name: Lady Bird Johnson Wildflower Center
+    url: https://www.wildflower.org/plants/result.php?id_plant=ECPU
+    accessed: 2026-04-24
+_meta:
+  generated_by: tools/new-entry
+  generated_at: 2026-04-24
+  sources:
+    scientific_name: GBIF
+    primary_common_name: iNaturalist
+    common_names: GBIF+USDA+iNaturalist
+    synonyms: GBIF
+    category: USDA GrowthHabits + Wildflower Habit
+    life_cycle: USDA Durations + Wildflower Duration
+    bloom_time: iNaturalist phenology (1739 flowering obs); Wildflower=4–9, USDA=6–7
+    height: 'Wildflower Size Notes="Up to about 4 feet tall." (cross-ref: USDA Mature=14in)'
+    light: Wildflower Light Requirement
+    moisture: Wildflower Soil Moisture
+    soil_ph: USDA 'pH, Minimum/Maximum'
+    drought_tolerance: USDA 'Drought Tolerance'
+    root_type: Wildflower Root Type
+  confidence:
+    scientific_name: high
+    primary_common_name: medium
+    common_names: high
+    category: high
+    life_cycle: high
+    bloom_time: high
+    height: high
+    light: high
+    moisture: high
+    soil_ph: high
+    drought_tolerance: high
+    root_type: high
+  usda_symbol: ECPU
+  usda_native_regions:
+    - L48
+  usda_introduced_regions:
+    - CAN
