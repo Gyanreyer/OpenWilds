@@ -36,27 +36,65 @@ moisture:
 # drought_tolerance: <TBD>  # TODO: USDA 'Drought Tolerance' not available or 'None'
 # conservation_status: <TBD>  # TODO: NatureServe integration deferred
 # toxicity: <TBD>  # TODO: literature review needed (humans, pets, livestock)
-# distribution: <TBD>  # TODO: county / CD distribution (Phase 4)
-# images: <TBD>  # TODO: iNaturalist image pipeline (Phase 5)
+distribution:
+  native_us_counties:
+    "01": # AL
+      [ "007" ]
+    "05": # AR
+      [ "005", "009", "023", "029", "049", "065", "089", "115", "119", "121", "135", "137" ]
+    "13": # GA
+      [ "047" ]
+    "17": # IL
+      [ "007", "013", "015", "017", "019", "031", "037", "043", "061", "063", "067", "071", "073", "077", "083", "085", "087", "089", "091", "097", "099", "103", "109", "111", "113", "117", "119", "121", "125", "129", "133", "135", "137", "141", "143", "155", "157", "161", "163", "177", "179", "181", "183", "197", "201", "203" ]
+    "18": # IN
+      [ "007", "039", "071", "073", "087", "089", "091", "111", "127", "141", "149", "151", "157" ]
+    "19": # IA
+      [ "005", "045", "055", "061", "067", "097", "105", "115", "127", "139", "163", "169", "191" ]
+    "21": # KY
+      [ "037", "093", "099", "135", "141" ]
+    "26": # MI
+      [ "001", "005", "011", "015", "025", "029", "031", "039", "047", "059", "063", "065", "067", "069", "075", "077", "081", "085", "093", "099", "101", "105", "107", "115", "117", "119", "121", "123", "125", "129", "135", "139", "143", "159", "161", "165" ]
+    "27": # MN
+      [ "003", "025", "027", "035", "037", "045", "049", "053", "055", "059", "067", "109", "119", "121", "123", "131", "141", "157", "161", "163", "169" ]
+    "29": # MO
+      [ "009", "019", "027", "029", "031", "035", "051", "055", "065", "067", "071", "073", "077", "091", "099", "105", "109", "111", "113", "125", "131", "135", "139", "141", "149", "151", "153", "161", "163", "169", "179", "183", "186", "187", "189", "203", "209", "213", "215", "219", "221", "229", "510" ]
+    "36": # NY
+      [ "063" ]
+    "39": # OH
+      [ "001", "009", "043", "049", "055", "071", "079", "131" ]
+    "47": # TN
+      [ "039", "051", "115", "121", "143", "145", "149", "189" ]
+    "55": # WI
+      [ "001", "011", "013", "021", "023", "025", "027", "035", "043", "045", "049", "053", "055", "057", "059", "063", "065", "071", "075", "077", "078", "081", "091", "093", "095", "101", "103", "105", "109", "111", "117", "121", "123", "133", "141" ]
+  native_ca_divisions:
+    "35": # ON
+      [ "14", "16", "18", "19", "20", "21", "23", "28", "30", "32", "34", "36", "37", "38", "39", "41", "51", "52", "57", "58" ]
+# images: <TBD>  # TODO: re-run with --images to populate
 sources:
   - name: GBIF Backbone Taxonomy
     url: https://www.gbif.org/species/3104278
-    accessed: 2026-04-24
+    accessed: 2026-04-27
+  - name: GBIF Occurrence Records
+    url: https://www.gbif.org/occurrence/search?taxon_key=3104278
+    accessed: 2026-04-27
+  - name: World Checklist of Vascular Plants (WCVP), Royal Botanic Gardens, Kew
+    url: https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:230560-1
+    accessed: 2026-04-27
   - name: USDA PLANTS Database
     url: https://plants.usda.gov/plant-profile/LICY
-    accessed: 2026-04-24
+    accessed: 2026-04-27
   - name: VASCAN (Database of Vascular Plants of Canada)
     url: https://data.canadensys.net/vascan/taxon/Liatris%20cylindracea
-    accessed: 2026-04-24
+    accessed: 2026-04-27
   - name: iNaturalist
     url: https://www.inaturalist.org/taxa/164685
-    accessed: 2026-04-24
+    accessed: 2026-04-27
   - name: Lady Bird Johnson Wildflower Center
     url: https://www.wildflower.org/plants/result.php?id_plant=LICY
-    accessed: 2026-04-24
+    accessed: 2026-04-27
 _meta:
   generated_by: tools/new-entry
-  generated_at: 2026-04-24
+  generated_at: 2026-04-27
   sources:
     scientific_name: GBIF
     primary_common_name: iNaturalist
@@ -68,6 +106,7 @@ _meta:
     height: Wildflower Size Notes="Up to about 2 feet tall."
     light: Wildflower Light Requirement
     moisture: Wildflower Soil Moisture
+    distribution: GBIF occurrences (2008 sampled / 2008 total); WCVP (17 native / 0 introduced regions); USDA distribution (15 US states, 194 US counties); VASCAN native provinces (1)
   confidence:
     scientific_name: high
     primary_common_name: medium
@@ -78,9 +117,59 @@ _meta:
     height: high
     light: high
     moisture: high
+    distribution: high
   usda_symbol: LICY
   usda_native_regions:
     - CAN
     - L48
   vascan_native_provinces:
     - ON
+  distribution_review:
+    us_state_unconfirmed:
+      - fips: "08031"
+        state: CO
+        county: Denver
+        obs: 1
+      - fips: "11001"
+        state: DC
+        county: District of Columbia
+        obs: 1
+      - fips: "28073"
+        state: MS
+        county: Lamar
+        obs: 2
+      - fips: "28087"
+        state: MS
+        county: Lowndes
+        obs: 1
+      - fips: "45057"
+        state: SC
+        county: Lancaster
+        obs: 1
+      - fips: "48041"
+        state: TX
+        county: Brazos
+        obs: 4
+      - fips: "48051"
+        state: TX
+        county: Burleson
+        obs: 1
+      - fips: "48121"
+        state: TX
+        county: Denton
+        obs: 1
+      - fips: "48407"
+        state: TX
+        county: San Jacinto
+        obs: 1
+    ca_province_unconfirmed:
+      - cduid: "6204"
+        prov: NU
+        cd: Qikiqtaaluk
+        obs: 1
+  distribution_stats:
+    gbif_total_available: 2008
+    gbif_sampled: 2008
+    gbif_classified: 1919
+    gbif_unclassified: 89
+    gbif_truncated: false

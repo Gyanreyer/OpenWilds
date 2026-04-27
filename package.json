@@ -30,9 +30,13 @@
   "dependencies": {
     "@11ty/eleventy": "^3.1.2",
     "@sqlite.org/sqlite-wasm": "^3.50.4-build1",
+    "@turf/boolean-point-in-polygon": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
     "better-sqlite3": "^12.2.0",
     "cheerio": "^1.2.0",
     "commander": "^14.0.3",
+    "rbush": "^4.0.1",
+    "sharp": "^0.34.5",
     "yaml": "^2.8.0",
     "yeti-js": "^0.0.6"
   }

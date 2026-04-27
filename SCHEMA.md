@@ -98,8 +98,8 @@ schemes differ.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `distribution.native_us_counties` | string[] | no | 5-digit FIPS codes (2 state + 3 county), e.g. `"26163"`. |
-| `distribution.native_ca_divisions` | string[] | no | 4-digit Statistics Canada CDUIDs (2 province + 2 CD), e.g. `"3520"`. |
+| `distribution.native_us_counties` | `Record<string, string[]>` | no | Map keyed by 2-digit state FIPS; values are 3-digit county-suffix lists. Reconstruct full FIPS as `${state}${suffix}`. E.g. `"26": ["163"]` = Wayne County, MI. Each state key carries an inline `# <USPS>` comment in generated drafts. |
+| `distribution.native_ca_divisions` | `Record<string, string[]>` | no | Map keyed by 2-digit province PRUID; values are 2-digit CD-suffix lists. Reconstruct full CDUID as `${prov}${suffix}`. E.g. `"35": ["20"]` = Toronto, ON. |
 
 ### Images
 
@@ -235,10 +235,12 @@ toxicity:
 
 distribution:
   native_us_counties:
-    - "26163"
-    - "26099"
+    "26": # MI
+      - "099"
+      - "163"
   native_ca_divisions:
-    - "3520"
+    "35": # ON
+      - "20"
 
 images:
   - local_path: images/0.jpg

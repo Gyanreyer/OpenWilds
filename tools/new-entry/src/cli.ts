@@ -23,14 +23,33 @@ import { Command } from "commander";
 
 import { createCache } from "./cache.ts";
 import { resolveFromGbif, type GbifResolved } from "./sources/gbif.ts";
-import { resolveFromUsda, type UsdaResolved } from "./sources/usda-plants.ts";
+import {
+  fetchDistribution,
+  resolveFromUsda,
+  type UsdaDistribution,
+  type UsdaResolved,
+} from "./sources/usda-plants.ts";
+import {
+  fetchIpniId,
+  fetchWcvpDistribution,
+  type WcvpDistribution,
+} from "./sources/gbif-distributions.ts";
 import { getNativeProvinces } from "./sources/vascan.ts";
 import { resolveFromINaturalist, type INatResolved } from "./sources/inaturalist.ts";
 import {
   resolveFromWildflower,
   type WildflowerResolved,
 } from "./sources/wildflower-center.ts";
-import { resolveEntryPath, REPO_ROOT } from "./paths.ts";
+import {
+  assembleDistribution,
+  type AssembledDistribution,
+} from "./distribution.ts";
+import { fetchImageCandidates } from "./sources/inaturalist-images.ts";
+import {
+  downloadAndProcessImages,
+  type ImagesResolution,
+} from "./images.ts";
+import { resolveEntryPath, REPO_ROOT, type EntryLocation } from "./paths.ts";
 import {
   buildDraftYaml,
   writeDraftYaml,
@@ -45,6 +64,9 @@ import type {
 interface CliOptions {
   force?: boolean;
   cache: boolean;
+  maxOccurrences?: string;
+  images?: boolean;
+  imagesOnly?: boolean;
 }
 
 const program = new Command();
@@ -55,8 +77,18 @@ program
   .argument("<name>", "scientific name — canonical or synonym")
   .option("-f, --force", "write data.draft.yml next to an existing data.yml")
   .option("--no-cache", "bypass the on-disk HTTP cache for this run")
+  .option(
+    "--max-occurrences <n>",
+    "cap GBIF occurrence sample for distribution (default 20000)"
+  )
+  .option("--images", "fetch + downscale top iNaturalist photos into images/")
+  .option(
+    "--images-only",
+    "skip data assembly; only fetch images and print the YAML block"
+  )
   .action(async (name: string, opts: CliOptions) => {
     const cache = createCache(opts.cache !== false);
+    const wantImages = Boolean(opts.images || opts.imagesOnly);
 
     // --- 1) GBIF is the taxonomy pivot; everything else keys off its binomial.
     console.log(`→ GBIF match "${name}"`);
@@ -67,6 +99,30 @@ program
     console.log(
       `  classification: ${gbif.family} / ${gbif.genus} / ${gbif.specificEpithet}`
     );
+
+    // --- Branch A: --images-only — skip data assembly entirely. Resolve only
+    // what's needed to find the species's image directory + iNat taxon id,
+    // download images, and print the YAML block to stdout for the reviewer
+    // to paste into an existing data.yml.
+    if (opts.imagesOnly) {
+      const inat = await resolveFromINaturalist(gbif.acceptedName, cache);
+      if (!inat?.taxonId) {
+        console.error(`iNat: no taxon resolved for "${gbif.acceptedName}"; cannot fetch images.`);
+        process.exit(1);
+      }
+      const loc = await resolveEntryPath(
+        gbif.family,
+        gbif.genus,
+        gbif.specificEpithet
+      );
+      const res = await runImageFetch(inat.taxonId, gbif.acceptedName, loc, cache);
+      console.log(
+        `\nWrote ${res.entries.length} images to ${path.relative(REPO_ROOT, res.absImageDir)}/`
+      );
+      console.log("\n# Paste into data.yml:");
+      console.log(buildDraftYaml({ images: { value: res.entries } }).trimEnd());
+      return;
+    }
 
     // --- 2) Downstream sources run in parallel.
     const [usda, vascanProvs, inat] = await Promise.all([
@@ -127,7 +183,86 @@ program
       }
     }
 
-    // --- 3) Resolve filesystem target and refuse-by-default.
+    // --- 3) Distribution: USDA county/state baseline + WCVP native-state
+    //        gate + GBIF occurrence sample, merged through the geo index.
+    let usdaDist: UsdaDistribution | null = null;
+    let wcvpDist: WcvpDistribution | null = null;
+    let ipniId: string | null = null;
+    await Promise.all([
+      (async () => {
+        if (!usda) return;
+        try {
+          usdaDist = await fetchDistribution(usda.id, cache);
+          console.log(
+            `  USDA distribution: ${usdaDist.usStateFips.size} US states, ${usdaDist.usCountyFips.size} US counties, ${usdaDist.caProvinces.size} CA provinces (CSV)`
+          );
+        } catch (err) {
+          console.error(`  [usda-dist] ${(err as Error).message}`);
+        }
+      })(),
+      (async () => {
+        try {
+          wcvpDist = await fetchWcvpDistribution(gbif.acceptedKey, cache);
+          if (wcvpDist) {
+            console.log(
+              `  WCVP: ${wcvpDist.usNative.size} US native, ${wcvpDist.usIntroduced.size} US introduced, ${wcvpDist.caNative.size} CA native, ${wcvpDist.caIntroduced.size} CA introduced`
+            );
+          } else {
+            console.log(`  WCVP: no records for this taxon`);
+          }
+        } catch (err) {
+          console.error(`  [wcvp] ${(err as Error).message}`);
+        }
+      })(),
+      (async () => {
+        try {
+          // Get ipni ID for constructing WCVP citation URL
+          ipniId = await fetchIpniId(gbif.acceptedKey, cache);
+        } catch (err) {
+          console.error(`  [ipni] ${(err as Error).message}`);
+        }
+      })(),
+    ]);
+    let distribution: AssembledDistribution | null = null;
+    const maxOccurrences = opts.maxOccurrences
+      ? parseInt(opts.maxOccurrences, 10)
+      : undefined;
+    if (maxOccurrences !== undefined && !Number.isFinite(maxOccurrences)) {
+      console.error(`--max-occurrences must be a number; got "${opts.maxOccurrences}"`);
+      process.exit(1);
+    }
+    try {
+      console.log(`  fetching GBIF occurrences for taxon ${gbif.acceptedKey}…`);
+      distribution = await assembleDistribution(
+        gbif.acceptedKey,
+        usdaDist,
+        wcvpDist,
+        vascanProvs,
+        cache,
+        maxOccurrences !== undefined ? { maxRecords: maxOccurrences } : {}
+      );
+      const {
+        counts: {
+          us: usCount,
+          ca: canadaCount,
+        },
+        introducedDropped: {
+          us: usDroppedCount,
+          ca: canadaDroppedCount,
+        },
+        gbifSampled,
+        gbifTruncated,
+        gbifTotalAvailable,
+        gbifUnclassified,
+      } = distribution.meta;
+      console.log(
+        `  distribution: ${usCount} US + ${canadaCount} CA included; ${reviewCount(distribution)} for review; ${usDroppedCount + canadaDroppedCount} dropped (introduced) (${gbifSampled}/${gbifTotalAvailable} GBIF obs sampled${gbifTruncated ? ", truncated" : ""}; ${gbifUnclassified} offshore/unclassified)`
+      );
+    } catch (err) {
+      console.error(`  [distribution] ${(err as Error).message}`);
+    }
+
+    // --- 4) Resolve filesystem target and refuse-by-default.
     const loc = await resolveEntryPath(
       gbif.family,
       gbif.genus,
@@ -146,11 +281,81 @@ program
         ? loc.absPath.replace(/data\.yml$/, "data.draft.yml")
         : loc.absPath;
 
-    // --- 4) Assemble and write.
-    const yaml = buildDraftYaml(buildFields(gbif, usda, vascanProvs, inat, wildflower));
+    // --- 5) Optional image fetch (Phase 5). Routed to images.draft/ when an
+    //        accepted data.yml already exists so curated images are preserved.
+    let imagesResolution: ImagesResolution | null = null;
+    if (wantImages) {
+      if (inat?.taxonId) {
+        imagesResolution = await runImageFetch(
+          inat.taxonId,
+          gbif.acceptedName,
+          loc,
+          cache
+        );
+      } else {
+        console.error(`  [images] iNat did not resolve a taxon; skipping`);
+      }
+    }
+
+    // --- 6) Assemble and write.
+    const yaml = buildDraftYaml(
+      buildFields(
+        gbif,
+        usda,
+        wcvpDist,
+        ipniId,
+        vascanProvs,
+        inat,
+        wildflower,
+        distribution,
+        imagesResolution
+      )
+    );
     await writeDraftYaml(outPath, yaml);
     console.log(`\nWrote ${path.relative(REPO_ROOT, outPath)}`);
   });
+
+// Unfiltered weighted highest because tree/shrub habit shots are usually
+// unannotated and would otherwise be invisible to the phenology-filtered passes.
+const IMAGE_QUOTA = { flowering: 2, fruiting: 2, unfiltered: 4 };
+
+async function runImageFetch(
+  taxonId: number,
+  acceptedScientificName: string,
+  loc: EntryLocation,
+  cache: ReturnType<typeof createCache>
+): Promise<ImagesResolution> {
+  const target =
+    IMAGE_QUOTA.flowering + IMAGE_QUOTA.fruiting + IMAGE_QUOTA.unfiltered;
+  console.log(
+    `  fetching iNat images (top ${target} by faves, open license; quota ${IMAGE_QUOTA.flowering} flowering + ${IMAGE_QUOTA.fruiting} fruiting + ${IMAGE_QUOTA.unfiltered} unfiltered)…`
+  );
+  const { candidates, floweringCount, fruitingCount, unfilteredCount } =
+    await fetchImageCandidates(taxonId, cache, IMAGE_QUOTA);
+  console.log(
+    `  candidates: ${candidates.length} total (${floweringCount} flowering, ${fruitingCount} fruiting, ${unfilteredCount} unfiltered)`
+  );
+  const res = await downloadAndProcessImages(
+    candidates,
+    acceptedScientificName,
+    path.dirname(loc.absPath),
+    loc.exists
+  );
+  for (const w of res.warnings) {
+    console.error(`  [images] ${w}`);
+  }
+  console.log(
+    `  images: ${res.entries.length} written to ${res.relImageDir}/`
+  );
+  return res;
+}
+
+function reviewCount(d: AssembledDistribution): number {
+  return (
+    (d.review.us_state_unconfirmed?.length ?? 0) +
+    (d.review.ca_province_unconfirmed?.length ?? 0)
+  );
+}
 
 await program.parseAsync();
 
@@ -161,9 +366,13 @@ await program.parseAsync();
 function buildFields(
   gbif: GbifResolved,
   usda: UsdaResolved | null,
+  wcvp: WcvpDistribution | null,
+  ipniId: string | null,
   vascanProvs: string[] | null,
   inat: INatResolved | null,
-  wf: WildflowerResolved | null
+  wf: WildflowerResolved | null,
+  distribution: AssembledDistribution | null,
+  images: ImagesResolution | null
 ): Partial<Record<TopLevelKey, DraftField>> {
   const fields: Partial<Record<TopLevelKey, DraftField>> = {};
   const metaSources: Record<string, string> = {};
@@ -244,9 +453,8 @@ function buildFields(
 
   if (inat?.phenology.range && inat.phenology.confidence !== "none") {
     fields.bloom_time = { value: inat.phenology.range };
-    metaSources.bloom_time = `iNaturalist phenology (${inat.phenology.total} flowering obs)${
-      crossRefs.length ? `; ${crossRefs.join(", ")}` : ""
-    }`;
+    metaSources.bloom_time = `iNaturalist phenology (${inat.phenology.total} flowering obs)${crossRefs.length ? `; ${crossRefs.join(", ")}` : ""
+      }`;
     confidence.bloom_time = inat.phenology.confidence;
   } else if (wf?.bloomTime) {
     fields.bloom_time = { value: wf.bloomTime };
@@ -270,8 +478,8 @@ function buildFields(
   const colorNames = wf?.bloomColorNames?.length
     ? wf.bloomColorNames
     : usda?.fields.bloom_color_name
-    ? [usda.fields.bloom_color_name]
-    : null;
+      ? [usda.fields.bloom_color_name]
+      : null;
   if (colorNames) {
     fields.bloom_color = todo(
       `${wf?.bloomColorNames ? "Wildflower" : "USDA"} Flower Color="${colorNames.join(", ")}" — reviewer adds hex`,
@@ -288,11 +496,10 @@ function buildFields(
   // under-report forbs — only if Wildflower didn't resolve.
   if (wf?.height) {
     fields.height = { value: wf.height };
-    metaSources.height = `Wildflower Size Notes="${wf.heightRaw}"${
-      usda?.fields.height
-        ? ` (cross-ref: USDA Mature=${usda.fields.height.max}in)`
-        : ""
-    }`;
+    metaSources.height = `Wildflower Size Notes="${wf.heightRaw}"${usda?.fields.height
+      ? ` (cross-ref: USDA Mature=${usda.fields.height.max}in)`
+      : ""
+      }`;
     confidence.height = "high";
   } else if (usda?.fields.height) {
     fields.height = { value: usda.fields.height };
@@ -370,45 +577,88 @@ function buildFields(
   }
 
   // --- Geography ---
-  fields.distribution = todo("county / CD distribution (Phase 4)");
+  if (distribution?.data) {
+    fields.distribution = { value: distribution.data };
+    metaSources.distribution = distribution.meta.sourceText;
+    confidence.distribution = distribution.meta.confidence;
+  } else {
+    fields.distribution = todo(
+      "no GBIF/USDA distribution data resolved",
+      "distribution: { native_us_counties: {}, native_ca_divisions: {} }"
+    );
+  }
 
   // --- Media ---
-  fields.images = todo("iNaturalist image pipeline (Phase 5)");
+  if (images && images.entries.length > 0) {
+    fields.images = { value: images.entries };
+    metaSources.images = `iNaturalist top observations by faves (${images.relImageDir}/)`;
+    confidence.images = "medium";
+  } else {
+    fields.images = todo(
+      images
+        ? "iNaturalist returned no open-licensed photos for this taxon"
+        : "re-run with --images to populate"
+    );
+  }
 
   // --- Attribution ---
+  const accessed = isoDate();
+
   const sources: SourceCitation[] = [
     {
       name: "GBIF Backbone Taxonomy",
       url: gbif.sourceUrl,
-      accessed: isoDate(),
+      accessed,
     },
   ];
+  // GBIF Occurrence is a distinct product from Backbone — Backbone supplies
+  // the taxonomy resolution, Occurrence the geospatial sample feeding county
+  // classification. Cited only when distribution actually used those records.
+  if (distribution && (distribution.meta.gbifSampled ?? 0) > 0) {
+    sources.push({
+      name: "GBIF Occurrence Records",
+      url: `https://www.gbif.org/occurrence/search?taxon_key=${gbif.acceptedKey}`,
+      accessed,
+    });
+  }
+  if (wcvp) {
+    // Prefer the IPNI-keyed deep link (`/taxon/<urn>`) when available; fall
+    // back to a name search if GBIF's /related endpoint surfaced no IPNI
+    // record for this taxon.
+    sources.push({
+      name: "World Checklist of Vascular Plants (WCVP), Royal Botanic Gardens, Kew",
+      url: ipniId
+        ? `https://powo.science.kew.org/taxon/${ipniId}`
+        : `https://powo.science.kew.org/?q=${encodeURIComponent(gbif.acceptedName)}`,
+      accessed,
+    });
+  }
   if (usda) {
     sources.push({
       name: "USDA PLANTS Database",
       url: usda.sourceUrl,
-      accessed: isoDate(),
+      accessed,
     });
   }
   if (vascanProvs) {
     sources.push({
       name: "VASCAN (Database of Vascular Plants of Canada)",
       url: `https://data.canadensys.net/vascan/taxon/${encodeURIComponent(gbif.acceptedName)}`,
-      accessed: isoDate(),
+      accessed,
     });
   }
   if (inat) {
     sources.push({
       name: "iNaturalist",
       url: inat.sourceUrl,
-      accessed: isoDate(),
+      accessed,
     });
   }
   if (wf) {
     sources.push({
       name: "Lady Bird Johnson Wildflower Center",
       url: wf.url,
-      accessed: isoDate(),
+      accessed,
     });
   }
   fields.sources = { value: sources };
@@ -423,6 +673,19 @@ function buildFields(
     }
   }
   if (vascanProvs) metaExtras.vascan_native_provinces = vascanProvs;
+  if (distribution) {
+    const reviewKeys = Object.keys(distribution.review) as Array<keyof typeof distribution.review>;
+    if (reviewKeys.some((k) => (distribution.review[k]?.length ?? 0) > 0)) {
+      metaExtras.distribution_review = distribution.review;
+    }
+    metaExtras.distribution_stats = {
+      gbif_total_available: distribution.meta.gbifTotalAvailable,
+      gbif_sampled: distribution.meta.gbifSampled,
+      gbif_classified: distribution.meta.gbifClassified,
+      gbif_unclassified: distribution.meta.gbifUnclassified,
+      gbif_truncated: distribution.meta.gbifTruncated,
+    };
+  }
 
   fields._meta = {
     value: {

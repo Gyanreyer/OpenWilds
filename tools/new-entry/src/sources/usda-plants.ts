@@ -143,6 +143,138 @@ async function fetchJson<T>(url: string, cache: Cache, key: string): Promise<T> 
 }
 
 // ---------------------------------------------------------------------------
+// Distribution (per-state + per-county presence)
+// ---------------------------------------------------------------------------
+
+/**
+ * USDA distribution data, split by what we can act on directly:
+ *   - `usStateFips`: every US state USDA reports any presence in (2-digit FIP).
+ *     Used as a soft gate on GBIF occurrences — counties outside this set are
+ *     emitted as commented TODOs for reviewer verification rather than dropped.
+ *   - `usCountyFips`: 5-digit FIPS for every US county USDA reports detail on.
+ *     USDA county coverage is uneven (some states list dozens of counties,
+ *     others list one despite documented occurrences elsewhere) so this is
+ *     used as a *baseline* set, not a ceiling — GBIF supplies the rest.
+ *   - `caProvinces`: Canadian provinces USDA records, surfaced for cross-ref
+ *     only. VASCAN is the authoritative Canadian native source.
+ */
+export interface UsdaDistribution {
+  usStateFips: Set<string>;
+  usCountyFips: Set<string>;
+  caProvinces: Set<string>;
+}
+
+interface DistributionCsvRow {
+  Symbol: string;
+  Country: string;
+  State: string;
+  "State FIP": string;
+  County: string;
+  "County FIP": string;
+}
+
+/**
+ * Fetch the per-plant distribution CSV via USDA's "Download Distribution"
+ * endpoint. The endpoint is intended for the web UI's CSV export but accepts a
+ * minimal `{ MasterId }` payload — no need to round-trip through the search
+ * endpoint when we already have the plant's internal Id.
+ *
+ * Cached gzipped under `.cache/usda-plants/distribution-<id>.json.gz`. The CSV
+ * is small (a few hundred rows for most species) but compresses well.
+ */
+export async function fetchDistribution(
+  plantId: number,
+  cache: Cache
+): Promise<UsdaDistribution> {
+  const key = `distribution-${plantId}`;
+  let csv = await cache.get<string>("usda-plants", key);
+  if (csv === null) {
+    const res = await fetch(
+      `${API_BASE}/PlantProfile/getDownloadDistributionDocumentation`,
+      {
+        method: "POST",
+        body: JSON.stringify({ MasterId: plantId }),
+        headers: {
+          Accept: "text/csv",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        `USDA distribution fetch for ${plantId}: ${res.status} ${res.statusText}`
+      );
+    }
+    csv = await res.text();
+    await cache.set("usda-plants", key, csv, { gzip: true });
+  }
+
+  return parseDistributionCsv(csv);
+}
+
+/**
+ * The CSV starts with a "Distribution Data" title line, then a header row,
+ * then data. Some rows are state-level rolls-up (no County / County FIP);
+ * others are per-county. We collect both signals so the caller can use the
+ * state set as a gate and the county set as an authoritative inclusion list.
+ */
+function parseDistributionCsv(csv: string): UsdaDistribution {
+  const lines = csv.split(/\r?\n/);
+  const headerIdx = lines.findIndex(
+    (l) => l.includes("Country") && l.includes("State FIP") && l.includes("County FIP")
+  );
+  if (headerIdx === -1) {
+    return {
+      usStateFips: new Set(),
+      usCountyFips: new Set(),
+      caProvinces: new Set(),
+    };
+  }
+
+  const rows = parseCsv(lines.slice(headerIdx).join("\n"), {
+    columns: true,
+    skip_empty_lines: true,
+    relax_quotes: true,
+  }) as DistributionCsvRow[];
+
+  const usStateFips = new Set<string>();
+  const usCountyFips = new Set<string>();
+  const caProvinces = new Set<string>();
+
+  for (const row of rows) {
+    if (row.Country === "United States") {
+      const stateFip = padFip(row["State FIP"], 2);
+      if (!stateFip) continue;
+      usStateFips.add(stateFip);
+      const countyFip = padFip(row["County FIP"], 3);
+      if (countyFip) {
+        usCountyFips.add(`${stateFip}${countyFip}`);
+      }
+    } else if (row.Country === "Canada") {
+      // CSV uses province *name* under State; we store that as-is. Reviewer
+      // never sees this directly — VASCAN drives Canadian filtering.
+      if (row.State) caProvinces.add(row.State);
+    }
+    // Mexico and other countries are ignored — out of scope for the schema.
+  }
+
+  return { usStateFips, usCountyFips, caProvinces };
+}
+
+/**
+ * USDA emits FIP codes without leading zeros (e.g. "1" for Alabama, "5" for
+ * Arkansas, "07" or "7" for a 3-digit county). Pad to the canonical width so
+ * concatenation produces a valid 5-digit FIPS regardless of the source's
+ * formatting choice.
+ */
+function padFip(raw: string | undefined, width: number): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  return trimmed.padStart(width, "0");
+}
+
+// ---------------------------------------------------------------------------
 // Field mapping — raw USDA values → schema v2 shapes
 // ---------------------------------------------------------------------------
 

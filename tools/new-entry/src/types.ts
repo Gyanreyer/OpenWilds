@@ -119,12 +119,17 @@ export interface Toxicity {
 /**
  * Distribution is split by country because the underlying coding schemes
  * differ (5-digit FIPS vs. 4-digit Statistics Canada CDUID).
+ *
+ * Each subdivision is grouped by its parent state/province to keep the on-disk
+ * form scannable: the key is the 2-digit state FIPS / province PRUID, the
+ * value is a list of the suffix portion (3-digit county FIPS / 2-digit CD).
+ * Reconstruct the full code by concatenating: `${stateFips}${countySuffix}`.
  */
 export interface Distribution {
-  /** 5-digit FIPS codes (2-digit state + 3-digit county), e.g. "26163". */
-  native_us_counties?: string[];
-  /** 4-digit Statistics Canada CDUIDs (2-digit province + 2-digit CD), e.g. "3520". */
-  native_ca_divisions?: string[];
+  /** State FIPS (2 digit) → list of county-suffix FIPS (3 digit). E.g. `"26": ["163"]` = Wayne County, MI. */
+  native_us_counties?: Record<string, string[]>;
+  /** Province PRUID (2 digit) → list of CD-suffix codes (2 digit). E.g. `"35": ["20"]` = Toronto, ON. */
+  native_ca_divisions?: Record<string, string[]>;
 }
 
 /**
