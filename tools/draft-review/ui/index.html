@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenWilds — draft review</title>
+<link rel="stylesheet" href="/ui/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-left">
+    <h1 id="entry-name">…</h1>
+    <span id="entry-path" class="muted"></span>
+  </div>
+  <div class="topbar-right">
+    <span id="counts" class="counts" aria-live="polite"></span>
+    <label class="toggle">
+      <input type="checkbox" id="show-occurrences">
+      Show GBIF observations
+    </label>
+    <span class="kbd-hint" title="Wheel: zoom · Drag: pan · 0: reset zoom · ⌘Z / ⌃Z: undo · ⇧⌘Z / ⌃Y: redo">?</span>
+  </div>
+</header>
+
+<main class="panes">
+  <section class="pane pane-map" id="pane-map">
+    <div class="map-shell" id="map-shell">
+      <!-- na.svg gets inlined here by map.js -->
+    </div>
+    <aside class="bulk-actions" id="bulk-actions" hidden>
+      <h2>Unconfirmed states / provinces</h2>
+      <p class="hint">Bulk-set every county/division in a region. Individual counties can also be toggled by clicking them.</p>
+      <ul id="bulk-list"></ul>
+    </aside>
+  </section>
+
+  <section class="pane pane-scalars" id="pane-scalars">
+    <h2>Scalar review</h2>
+    <p class="placeholder">Phase 7c will render TODO resolution + scalar field overrides here.</p>
+    <pre id="scalar-preview" class="muted"></pre>
+  </section>
+</main>
+
+<div class="tooltip" id="tooltip" hidden></div>
+
+<script type="module" src="/ui/map.js"></script>
+<script type="module" src="/ui/occurrences.js"></script>
+</body>
+</html>

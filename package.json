@@ -7,7 +7,8 @@
     "site:build": "npx @11ty/eleventy",
     "site:serve": "npx @11ty/eleventy --serve --incremental",
     "db:build": "node scripts/buildDatabase.js",
-    "db:build-svg-map": "node tools/build-svg-map/build.js"
+    "db:build-svg-map": "node tools/build-svg-map/build.js",
+    "db:review": "node tools/draft-review/cli.ts"
   },
   "author": "Ryan Geyer",
   "license": "Unlicense",
@@ -18,14 +19,17 @@
   },
   "devDependencies": {
     "@11ty/eleventy-img": "^6.0.4",
+    "@hono/node-server": "^2.0.0",
     "@types/node": "^24.3.0",
     "@typescript/native-preview": "^7.0.0-dev.20250726.1",
     "csv-parse": "^6.1.0",
     "d3-geo": "^3.1.1",
     "esbuild": "^0.25.9",
+    "hono": "^4.12.15",
     "html-rewriter-wasm": "^0.4.1",
     "lightningcss": "^1.30.1",
     "mapshaper": "^0.7.0",
+    "open": "^11.0.0",
     "svgo": "^4.0.1",
     "topojson-client": "^3.1.0",
     "topojson-server": "^3.0.1",

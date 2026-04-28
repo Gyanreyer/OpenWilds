@@ -19,6 +19,8 @@
  */
 
 import path from "node:path";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 
 import { createCache } from "./cache.ts";
@@ -67,6 +69,7 @@ interface CliOptions {
   maxOccurrences?: string;
   images?: boolean;
   imagesOnly?: boolean;
+  review?: boolean;
 }
 
 const program = new Command();
@@ -86,6 +89,7 @@ program
     "--images-only",
     "skip data assembly; only fetch images and print the YAML block"
   )
+  .option("--review", "after writing, launch the draft-review UI for the new draft")
   .action(async (name: string, opts: CliOptions) => {
     const cache = createCache(opts.cache !== false);
     const wantImages = Boolean(opts.images || opts.imagesOnly);
@@ -313,7 +317,32 @@ program
     );
     await writeDraftYaml(outPath, yaml);
     console.log(`\nWrote ${path.relative(REPO_ROOT, outPath)}`);
+
+    if (opts.review) {
+      await launchReview(outPath);
+    }
   });
+
+/**
+ * Hand off to `tools/draft-review/cli.ts` for the new draft. We replace this
+ * process's stdio with the child's so Ctrl-C and the review server's logging
+ * appear inline. The review CLI takes over until the reviewer kills it.
+ */
+function launchReview(draftPath: string): Promise<void> {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const reviewCli = path.resolve(here, "..", "..", "draft-review", "cli.ts");
+  console.log(`\n→ launching review UI…`);
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [reviewCli, draftPath], {
+      stdio: "inherit",
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0 || code === null) resolve();
+      else reject(new Error(`draft-review exited with code ${code}`));
+    });
+  });
+}
 
 // Unfiltered weighted highest because tree/shrub habit shots are usually
 // unannotated and would otherwise be invisible to the phenology-filtered passes.
@@ -665,6 +694,7 @@ function buildFields(
 
   // --- Draft metadata ---
   const metaExtras: Record<string, unknown> = {};
+  metaExtras.gbif_taxon_key = gbif.acceptedKey;
   if (usda) {
     metaExtras.usda_symbol = usda.symbol;
     metaExtras.usda_native_regions = usda.native.nativeRegions;

@@ -1,0 +1,231 @@
+:root {
+  --bg: #fafaf7;
+  --panel: #fff;
+  --border: #d8d4c8;
+  --text: #2a2a26;
+  --muted: #777;
+
+  /* Highlight palette — used as both fills (via CSS custom properties on the
+     map wrapper) and as legend swatches in the bulk-actions list. */
+  --confirmed: #2e7d4e;     /* native, confirmed by USDA/WCVP/VASCAN */
+  --review-pending: #e6b800; /* in distribution_review, no reviewer decision yet */
+  --review-include: #4caf50; /* reviewer toggled to include */
+  --review-exclude: #c0c0c0; /* reviewer toggled to exclude */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-left { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.topbar h1 {
+  font-size: 16px;
+  margin: 0;
+  font-style: italic;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+
+.counts { font-size: 13px; color: var(--muted); }
+.counts strong { color: var(--text); }
+.muted { color: var(--muted); font-size: 12px; }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: help;
+  user-select: none;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 0;
+  height: calc(100vh - 49px);
+}
+
+.pane {
+  background: var(--panel);
+  overflow: auto;
+}
+
+.pane-map {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  border-right: 1px solid var(--border);
+}
+
+.map-shell {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-shell svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  cursor: grab;
+  /* Stop the browser from scrolling the page when the user wheel-zooms or
+     drag-pans on the map. */
+  touch-action: none;
+  user-select: none;
+}
+
+/* Path-level styling. Counties / divisions: stroke comes from the SVG's
+   embedded <style> (.co / .dv); fill comes from the per-path
+   `fill="var(--us-XXXXX, default)"` attribute. We set those custom properties
+   per-id on `#map-wrapper` for highlighting. */
+.map-shell .co,
+.map-shell .dv {
+  cursor: default;
+  transition: filter 80ms ease;
+}
+.map-shell .co.review,
+.map-shell .dv.review {
+  cursor: pointer;
+}
+.map-shell .co:hover,
+.map-shell .dv:hover {
+  filter: brightness(0.92);
+}
+
+.bulk-actions {
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  background: var(--panel);
+  max-height: 240px;
+  overflow: auto;
+}
+.bulk-actions h2 {
+  font-size: 13px;
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+.bulk-actions .hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+#bulk-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 12px;
+}
+#bulk-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+#bulk-list .label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#bulk-list .count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+#bulk-list button {
+  font-size: 11px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 3px;
+}
+#bulk-list button:hover { background: #f0eee5; }
+
+.pane-scalars {
+  padding: 16px;
+}
+.pane-scalars h2 {
+  font-size: 14px;
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.placeholder {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+}
+#scalar-preview {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+/* Occurrence overlay dots. */
+.occurrence-dot {
+  fill: rgba(80, 60, 200, 0.55);
+  stroke: none;
+  pointer-events: none;
+}
+
+/* Tooltip floats above the map; positioned by JS. */
+.tooltip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: rgba(20, 20, 18, 0.92);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  max-width: 280px;
+  line-height: 1.4;
+}
+.tooltip .name { font-weight: 600; }
+.tooltip .code { font-family: ui-monospace, monospace; color: #ccc; }
+.tooltip .stat { color: #ccc; }
