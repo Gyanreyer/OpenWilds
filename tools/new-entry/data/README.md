@@ -1,8 +1,8 @@
 # tools/new-entry/data/
 
-Committed offline data used by the `new-entry` CLI. These files are produced by
-[`../scripts/prep-data.ts`](../scripts/prep-data.ts) and should not be edited by
-hand — re-run the script to pick up a newer upstream vintage.
+Plant-data artifacts used by the `new-entry` CLI. These files are produced by
+[`../scripts/prep-data.ts`](../scripts/prep-data.ts) and should not be edited
+by hand — re-run the script to pick up a newer upstream vintage.
 
 ```
 node tools/new-entry/scripts/prep-data.ts            # all four steps
@@ -13,39 +13,11 @@ node tools/new-entry/scripts/prep-data.ts --force-download
 Staged raw downloads land in `tools/new-entry/.prep/` (gitignored) and are
 re-used on subsequent runs unless `--force-download` is passed.
 
+The geographic boundary artifacts (US counties, Canadian census divisions)
+that `new-entry` also depends on live in [`../../data/geo/`](../../data/geo/)
+— they're shared with `tools/build-svg-map/` and aren't `new-entry`-specific.
+
 ## Files
-
-### `us-counties-2024.geojson`
-
-**Source:** TIGER/Line 2024, U.S. Census Bureau.
-**URL:** https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip
-**License:** Public domain (U.S. federal government work).
-**Vintage:** 2024 (annual release).
-
-FeatureCollection of US counties and county-equivalents (3,235 features),
-projected to WGS84 and simplified with Visvalingam weighted at 4%. Each
-feature's properties retain only:
-
-- `GEOID` — 5-digit FIPS (2-digit state + 3-digit county), the primary key
-  used throughout the schema (`distribution.native_us_counties`).
-- `NAME` — short county name (e.g. "Wayne"), for display.
-
-### `ca-divisions-2021.geojson`
-
-**Source:** Statistics Canada, 2021 Census — Cartographic Boundary Files,
-Census Divisions (lcd_000b21a_e).
-**URL:** https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lcd_000b21a_e.zip
-**License:** Statistics Canada Open Licence (attribution required).
-**Vintage:** 2021 Census (next refresh after the 2026 Census).
-
-FeatureCollection of Canadian Census Divisions (≈293 features), projected to
-WGS84 and simplified with Visvalingam weighted at 4%. Each feature retains:
-
-- `CDUID` — 4-digit Statistics Canada code (2-digit province + 2-digit CD),
-  the primary key for `distribution.native_ca_divisions`.
-- `CDNAME` — division name (English; some provinces use terms other than
-  "census division" — e.g. British Columbia's Regional Districts, Quebec's
-  MRCs — but the CDUID remains the universal identifier).
 
 ### `usda-plantlst.txt`
 

@@ -1,10 +1,11 @@
 /**
- * Regenerates the committed offline data artifacts under
- * `tools/new-entry/data/` from upstream sources.
+ * Regenerates the committed offline data artifacts from upstream sources.
  *
- * Four artifacts:
- *   us-counties-2024.geojson   TIGER 2024 county boundaries, WGS84, simplified.
- *   ca-divisions-2021.geojson  StatCan 2021 Census Division boundaries, WGS84, simplified.
+ * Geo artifacts live under `tools/data/geo/` (shared across tooling):
+ *   us-counties-2024.geojson   TIGER 2024 cartographic-boundary counties, water-clipped.
+ *   ca-divisions-2021.geojson  StatCan 2021 cartographic-boundary census divisions.
+ *
+ * Plant-specific artifacts live under `tools/new-entry/data/`:
  *   usda-plantlst.txt          USDA PLANTS complete list (name -> symbol index).
  *   vascan.csv                 VASCAN accepted species with native Canadian provinces.
  *
@@ -29,27 +30,39 @@ const TOOL_ROOT = path.resolve(HERE, "..");
 const REPO_ROOT = path.resolve(TOOL_ROOT, "..", "..");
 const PREP_DIR = path.join(TOOL_ROOT, ".prep");
 const DATA_DIR = path.join(TOOL_ROOT, "data");
+const GEO_DIR = path.join(REPO_ROOT, "tools", "data", "geo");
 
 const SOURCES = {
   tiger: {
-    url: "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
-    staged: "tl_2024_us_county.zip",
+    // Cartographic Boundary Files (1:500k) — pre-clipped to land so counties
+    // don't extend into the Great Lakes / coastal waters. The full TIGER/Line
+    // file (`tl_2024_us_county`) does include water boundaries and produces
+    // ugly maps for shoreline counties.
+    url: "https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_county_500k.zip",
+    staged: "cb_2024_us_county_500k.zip",
     output: "us-counties-2024.geojson",
+    outputDir: GEO_DIR,
   },
   statcan: {
+    // StatCan publishes both digital (full extent, with water) and cartographic
+    // (clipped to land) boundary files. `lcd_000b21a_e` is the cartographic
+    // variant — the `b` in the filename signals boundary-cartographic.
     url: "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lcd_000b21a_e.zip",
     staged: "lcd_000b21a_e.zip",
     output: "ca-divisions-2021.geojson",
+    outputDir: GEO_DIR,
   },
   usda: {
     url: "https://plants.sc.egov.usda.gov/DocumentLibrary/Txt/plantlst.txt",
     staged: "plantlst.txt",
     output: "usda-plantlst.txt",
+    outputDir: DATA_DIR,
   },
   vascan: {
     url: "https://data.canadensys.net/ipt/archive.do?r=vascan",
     staged: "vascan-dwca.zip",
     output: "vascan.csv",
+    outputDir: DATA_DIR,
   },
 } as const;
 
@@ -164,7 +177,7 @@ async function reportSize(p: string): Promise<void> {
 async function prepTiger(force: boolean): Promise<void> {
   console.log("\n[tiger] US county boundaries");
   const zip = await ensureDownloaded(SOURCES.tiger, force);
-  const output = path.join(DATA_DIR, SOURCES.tiger.output);
+  const output = path.join(SOURCES.tiger.outputDir, SOURCES.tiger.output);
   runMapshaper([
     zip,
     "-proj",
@@ -192,7 +205,7 @@ async function prepTiger(force: boolean): Promise<void> {
 async function prepStatCan(force: boolean): Promise<void> {
   console.log("\n[statcan] Canada Census Division boundaries");
   const zip = await ensureDownloaded(SOURCES.statcan, force);
-  const output = path.join(DATA_DIR, SOURCES.statcan.output);
+  const output = path.join(SOURCES.statcan.outputDir, SOURCES.statcan.output);
   // Canada's Arctic and Pacific coastlines drive up byte count more than
   // the 293 CD count; we simplify harder than the US counties (2%) to stay
   // under 10 MB.
@@ -224,7 +237,7 @@ async function prepStatCan(force: boolean): Promise<void> {
 async function prepUsda(force: boolean): Promise<void> {
   console.log("\n[usda] PLANTS checklist");
   const staged = await ensureDownloaded(SOURCES.usda, force);
-  const output = path.join(DATA_DIR, SOURCES.usda.output);
+  const output = path.join(SOURCES.usda.outputDir, SOURCES.usda.output);
   const buf = await readFile(staged);
   await writeFile(output, buf);
   await reportSize(output);
@@ -308,7 +321,7 @@ async function prepVascan(force: boolean): Promise<void> {
     const provs = [...provincesBySpecies.get(name)!].sort().join("|");
     rows.push(`${csvField(name)},${provs}`);
   }
-  const output = path.join(DATA_DIR, SOURCES.vascan.output);
+  const output = path.join(SOURCES.vascan.outputDir, SOURCES.vascan.output);
   await writeFile(output, rows.join("\n") + "\n");
   console.log(`  ${rows.length - 1} species with native provinces`);
   await reportSize(output);
@@ -329,6 +342,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   await mkdir(PREP_DIR, { recursive: true });
   await mkdir(DATA_DIR, { recursive: true });
+  await mkdir(GEO_DIR, { recursive: true });
 
   const steps: Record<StepName, (f: boolean) => Promise<void>> = {
     tiger: prepTiger,

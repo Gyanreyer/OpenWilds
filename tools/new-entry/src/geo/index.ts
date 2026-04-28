@@ -1,8 +1,8 @@
 /**
  * Spatial index over US counties (TIGER 2024) and Canadian census divisions
  * (StatCan 2021). Built once per process from the committed geojson artifacts
- * in [tools/new-entry/data](../../data) and reused for every occurrence
- * lookup.
+ * in [tools/data/geo](../../../../tools/data/geo) and reused for every
+ * occurrence lookup.
  *
  * Two trees, not one: a single tree spanning North America would force every
  * GBIF point through both polygon sets. GBIF tags each occurrence with a
@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import RBush from "rbush";
 import type { MultiPolygon, Polygon, Position } from "geojson";
 
-const DATA_DIR = fileURLToPath(import.meta.resolve("../../data"));
+const GEO_DIR = fileURLToPath(import.meta.resolve("../../../data/geo"));
 
 /**
  * RBush requires `minX/minY/maxX/maxY` on each entry; we tack on the polygon
@@ -54,8 +54,8 @@ export async function loadGeoIndex(): Promise<GeoIndex> {
   if (cached) return cached;
 
   const [usFeatures, caFeatures] = await Promise.all([
-    readFeatures(path.join(DATA_DIR, "us-counties-2024.geojson"), "GEOID", "NAME"),
-    readFeatures(path.join(DATA_DIR, "ca-divisions-2021.geojson"), "CDUID", "CDNAME"),
+    readFeatures(path.join(GEO_DIR, "us-counties-2024.geojson"), "GEOID", "NAME"),
+    readFeatures(path.join(GEO_DIR, "ca-divisions-2021.geojson"), "CDUID", "CDNAME"),
   ]);
 
   const us = new RBush<IndexedSubdivision>();
