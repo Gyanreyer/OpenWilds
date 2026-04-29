@@ -19,7 +19,16 @@
  * write-back through POST /api/finalize.
  */
 
-/** @typedef {"pending" | "include" | "exclude"} ReviewDecision */
+import { createHistory } from "./history.js";
+import { createImagesPane } from "./images.js";
+import { createFieldsPane } from "./fields.js";
+import { wireFinalize } from "./finalize.js";
+import { wireCountyContextMenu } from "./county-menu.js";
+
+/** @typedef {import("./history.js").ReviewDecision} ReviewDecision */
+/** @typedef {import("./history.js").Change} Change */
+/** @typedef {import("./history.js").CountyChange} CountyChange */
+/** @typedef {import("./history.js").History} History */
 
 /** @typedef {{
  *   id: string,            // SVG id, e.g. "us-26163"
@@ -39,15 +48,6 @@
  *   decisions: Map<string, ReviewDecision>,
  *   svg: SVGSVGElement,
  * }} DraftReviewState
- */
-
-/** @typedef {{ id: string, before: ReviewDecision, after: ReviewDecision }} Change */
-
-/** @typedef {{
- *   apply(changes: Change[]): void,
- *   undo(): boolean,
- *   redo(): boolean,
- * }} History
  */
 
 /** @typedef {{
@@ -93,19 +93,6 @@ const main = async () => {
 
   setText("entry-name", String(draft.scientific_name ?? "(unnamed)"));
   setText("entry-path", String(draft._path ?? ""));
-  setText("scalar-preview", JSON.stringify(
-    {
-      primary_common_name: draft.primary_common_name,
-      category: draft.category,
-      life_cycle: draft.life_cycle,
-      bloom_time: draft.bloom_time,
-      height: draft.height,
-      light: draft.light,
-      moisture: draft.moisture,
-    },
-    null,
-    2
-  ));
 
   const mapShell = /** @type {HTMLElement} */ (document.getElementById("map-shell"));
   mapShell.innerHTML = svgText;
@@ -128,23 +115,65 @@ const main = async () => {
   paintHighlights(confirmedIds, reviewItems, decisions);
   updateCounts(confirmedIds, reviewItems, decisions);
 
-  // History wraps every decision mutation. `commit` is the side-effect after
-  // a change set lands in `decisions` — repaint + update counts. Per-county
-  // click and per-state bulk actions both go through history so undo/redo
-  // works uniformly.
+  const imagesPane = createImagesPane(draft);
+  const fieldsPane = createFieldsPane(draft);
+
+  // History wraps every reviewer mutation. `commit` is the side-effect after
+  // a change-set lands — dispatch each change to the right pane's mutator,
+  // then repaint affected rendering. All change kinds (county, image-*,
+  // scalar, todo) flow through one stack so Ctrl-Z works uniformly across
+  // panes regardless of focus.
   /** @param {Change[]} changes @param {"before" | "after"} side */
   const commit = (changes, side) => {
-    for (const c of changes) decisions.set(c.id, c[side]);
-    paintHighlights(confirmedIds, reviewItems, decisions);
-    updateCounts(confirmedIds, reviewItems, decisions);
+    let mapTouched = false;
+    let imagesTouched = false;
+    let fieldsTouched = false;
+    for (const c of changes) {
+      if (c.kind === "county") {
+        decisions.set(c.id, c[side]);
+        mapTouched = true;
+      } else if (imagesPane.applyChange(c, side)) {
+        imagesTouched = true;
+      } else if (fieldsPane.applyChange(c, side)) {
+        fieldsTouched = true;
+      }
+    }
+    if (mapTouched) {
+      paintHighlights(confirmedIds, reviewItems, decisions);
+      updateCounts(confirmedIds, reviewItems, decisions);
+    }
+    if (imagesTouched) imagesPane.render();
+    if (fieldsTouched) fieldsPane.render();
   };
   const history = createHistory(commit);
   const panZoom = createPanZoom(svg);
 
   wireHover(svg, mapShell, countyCounts, reviewItems, decisions, confirmedIds);
   wireClicks(svg, reviewItems, decisions, confirmedIds, history, panZoom);
+  wireCountyContextMenu({ svg, reviewItems, decisions, history });
   renderBulkList(reviewItems, decisions, history);
   wireKeyboard(history, panZoom);
+  imagesPane.wire(history);
+  imagesPane.render();
+  fieldsPane.wire(history);
+  fieldsPane.render();
+
+  wireFinalize({
+    draftPath: String(draft._path ?? ""),
+    getDistribution: () => {
+      /** @type {string[]} */
+      const confirm = [];
+      /** @type {string[]} */
+      const exclude = [];
+      for (const [id, dec] of decisions) {
+        if (dec === "include") confirm.push(id);
+        else if (dec === "exclude") exclude.push(id);
+      }
+      return { confirm, exclude };
+    },
+    imagesPane,
+    fieldsPane,
+  });
 
   // Make the parsed shape + the inlined svg root available to occurrences.js,
   // which waits on this event before drawing the dot overlay.
@@ -354,7 +383,7 @@ function wireClicks(svg, reviewItems, decisions, _confirmedIds, history, panZoom
     const cur = decisions.get(id) ?? "pending";
     const next =
       cur === "pending" ? "include" : cur === "include" ? "exclude" : "pending";
-    history.apply([{ id, before: cur, after: next }]);
+    history.apply([{ kind: "county", id, before: cur, after: next }]);
   });
 }
 
@@ -409,50 +438,12 @@ function renderBulkList(reviewItems, decisions, history) {
       const changes = [];
       for (const id of ids) {
         const before = decisions.get(id) ?? "pending";
-        if (before !== next) changes.push({ id, before, after: next });
+        if (before !== next) changes.push({ kind: "county", id, before, after: next });
       }
       history.apply(changes);
     });
     list.appendChild(li);
   }
-}
-
-/**
- * Linear undo/redo stack of change-sets. `commit` is the side-effect: apply
- * the chosen side (`before` for undo, `after` for apply / redo) to the
- * decisions map and refresh the rendering. A new `apply()` truncates any
- * outstanding redo tail, matching standard editor behavior.
- *
- * @param {(changes: Change[], side: "before" | "after") => void} commit
- * @returns {History}
- */
-function createHistory(commit) {
-  /** @type {Change[][]} */
-  const stack = [];
-  let cursor = 0;
-  return {
-    apply(changes) {
-      // Drop no-ops so undo doesn't have to step over them.
-      const filtered = changes.filter((c) => c.before !== c.after);
-      if (filtered.length === 0) return;
-      stack.length = cursor;
-      stack.push(filtered);
-      cursor++;
-      commit(filtered, "after");
-    },
-    undo() {
-      if (cursor === 0) return false;
-      cursor--;
-      commit(stack[cursor], "before");
-      return true;
-    },
-    redo() {
-      if (cursor >= stack.length) return false;
-      commit(stack[cursor], "after");
-      cursor++;
-      return true;
-    },
-  };
 }
 
 /**

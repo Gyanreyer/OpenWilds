@@ -1,5 +1,5 @@
 /**
- * `new-entry` CLI — drafts a data.yml for a native plant species.
+ * `new-entry` CLI — drafts a data.draft.yml for a native plant species.
  *
  *   node tools/new-entry/src/cli.ts "<scientific name>"
  *   node tools/new-entry/src/cli.ts "Quercus alba" --force
@@ -78,7 +78,7 @@ program
   .name("new-entry")
   .description("Draft a data.yml for a native plant species.")
   .argument("<name>", "scientific name — canonical or synonym")
-  .option("-f, --force", "write data.draft.yml next to an existing data.yml")
+  .option("-f, --force", "overwrite an existing data.draft.yml")
   .option("--no-cache", "bypass the on-disk HTTP cache for this run")
   .option(
     "--max-occurrences <n>",
@@ -273,17 +273,14 @@ program
       gbif.specificEpithet
     );
 
-    if (loc.exists && !opts.force) {
+    if (loc.draftExists && !opts.force) {
       console.error(
-        `\nRefusing to overwrite existing entry: ${loc.relPath}\n  Re-run with --force to write data.draft.yml next to it.`
+        `\nRefusing to overwrite existing draft: ${loc.draftRelPath}\n  Re-run with --force to overwrite.`
       );
       process.exit(1);
     }
 
-    const outPath =
-      loc.exists && opts.force
-        ? loc.absPath.replace(/data\.yml$/, "data.draft.yml")
-        : loc.absPath;
+    const outPath = loc.draftPath;
 
     // --- 5) Optional image fetch (Phase 5). Routed to images.draft/ when an
     //        accepted data.yml already exists so curated images are preserved.
@@ -346,7 +343,7 @@ function launchReview(draftPath: string): Promise<void> {
 
 // Unfiltered weighted highest because tree/shrub habit shots are usually
 // unannotated and would otherwise be invisible to the phenology-filtered passes.
-const IMAGE_QUOTA = { flowering: 2, fruiting: 2, unfiltered: 4 };
+const IMAGE_QUOTA = { flowering: 3, fruiting: 3, unfiltered: 10 };
 
 async function runImageFetch(
   taxonId: number,

@@ -14,8 +14,9 @@
  *      `data/plantae/`. We walk plantae once at startup; ~few hundred dirs.
  *
  * Server lifecycle: starts on a random free port, prints the URL, opens the
- * default browser, and exits on Ctrl-C. Phase 7c will wire a graceful exit
- * after a successful POST /api/finalize.
+ * default browser, and exits on Ctrl-C — or on a successful
+ * `POST /api/finalize`, which writes data.yml + tears down the draft and the
+ * server in one shot.
  */
 
 import { stat, readdir } from "node:fs/promises";

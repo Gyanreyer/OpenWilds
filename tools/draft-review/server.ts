@@ -15,7 +15,7 @@
  * Memory cost is the same ~10 MB the new-entry tool already pays.
  */
 
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, rm, rename, unlink, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
@@ -27,6 +27,7 @@ import type { FeatureCollection } from "geojson";
 
 import { loadGeoIndex, type GeoIndex } from "../new-entry/src/geo/index.ts";
 import { classifyPoint } from "../new-entry/src/geo/classify.ts";
+import { computeDiff, type FileOp, type ReviewerState } from "./diff.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -64,6 +65,13 @@ interface ProjectedDot {
 interface ParsedDraft {
   raw: Record<string, unknown>;
   taxonKey: number | null;
+  /** Field names of `# TODO:` placeholder lines (commented-out keys with TODO markers). */
+  todos: string[];
+}
+
+interface DraftImage {
+  absPath: string;
+  contentType: string;
 }
 
 export async function startServer(opts: ServerOptions): Promise<{ url: string }> {
@@ -79,9 +87,10 @@ export async function startServer(opts: ServerOptions): Promise<{ url: string }>
     : [];
   const projectedDots = projectOccurrences(occurrences, projection.project);
   const countyCounts = tallyCountyCounts(occurrences, geo);
+  const imagesByBasename = buildImageIndex(opts.draftPath, draft.raw);
 
   console.log(
-    `loaded: ${occurrences.length} cached GBIF points, ${Object.keys(countyCounts).length} counties with observations`
+    `loaded: ${occurrences.length} cached GBIF points, ${Object.keys(countyCounts).length} counties with observations, ${Object.keys(imagesByBasename).length} draft images`
   );
 
   const app = new Hono();
@@ -114,6 +123,7 @@ export async function startServer(opts: ServerOptions): Promise<{ url: string }>
   app.get("/api/draft", (c) =>
     c.json({
       _path: path.relative(REPO_ROOT, opts.draftPath),
+      _todos: draft.todos,
       ...draft.raw,
     })
   );
@@ -133,15 +143,169 @@ export async function startServer(opts: ServerOptions): Promise<{ url: string }>
 
   app.get("/api/county-counts", (c) => c.json(countyCounts));
 
-  app.post("/api/finalize", (c) =>
-    c.json({ ok: false, error: "not implemented (Phase 7c)" }, 501)
-  );
+  app.get("/api/image/:filename{[a-zA-Z0-9._-]+}", async (c) => {
+    const fname = c.req.param("filename");
+    const img = imagesByBasename[fname];
+    if (!img) return c.notFound();
+    try {
+      const body = await readFile(img.absPath);
+      return new Response(body, {
+        headers: { "content-type": img.contentType, "cache-control": "no-store" },
+      });
+    } catch {
+      return c.notFound();
+    }
+  });
+
+  app.post("/api/finalize", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ ok: false, error: "invalid JSON body" }, 400);
+    }
+    const reviewer = parseReviewerState(body);
+    if (!reviewer) {
+      return c.json({ ok: false, error: "malformed reviewer state" }, 400);
+    }
+
+    let result;
+    try {
+      result = computeDiff(draft.raw, reviewer, opts.draftPath);
+    } catch (err) {
+      return c.json(
+        { ok: false, error: `diff failed: ${(err as Error).message}` },
+        500,
+      );
+    }
+
+    const draftDir = path.dirname(opts.draftPath);
+    const dataYmlPath = path.join(draftDir, "data.yml");
+
+    try {
+      await writeFile(dataYmlPath, result.yamlText, "utf8");
+      // The draft is now superseded by data.yml; remove before file ops so a
+      // half-finalized state isn't left with both files present.
+      await unlink(opts.draftPath);
+      await runFileOps(result.fileOps);
+    } catch (err) {
+      return c.json(
+        { ok: false, error: `finalize I/O failed: ${(err as Error).message}` },
+        500,
+      );
+    }
+
+    const relPath = path.relative(REPO_ROOT, dataYmlPath);
+    console.log(`\nFinalized: ${relPath}`);
+    // Flush the response before exiting — the client uses the success reply
+    // to render its "server exiting" message.
+    setTimeout(() => process.exit(0), 250);
+    return c.json({ ok: true, path: relPath });
+  });
 
   return new Promise((resolve) => {
     serve({ fetch: app.fetch, port: opts.port }, (info) => {
       resolve({ url: `http://localhost:${info.port}/` });
     });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Finalize helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Best-effort runtime validation of the POST /api/finalize body. The shape
+ * matches `ReviewerState` in [./diff.ts](./diff.ts); anything malformed
+ * yields `null` so the route can return 400.
+ */
+function parseReviewerState(body: unknown): ReviewerState | null {
+  if (!body || typeof body !== "object") return null;
+  const o = body as Record<string, unknown>;
+
+  const dist = o.distribution as Record<string, unknown> | undefined;
+  const confirm = Array.isArray(dist?.confirm) ? dist.confirm.filter((x) => typeof x === "string") : [];
+  const exclude = Array.isArray(dist?.exclude) ? dist.exclude.filter((x) => typeof x === "string") : [];
+
+  const scalars = isPlainObject(o.scalars) ? (o.scalars as Record<string, unknown>) : {};
+  const todos = isPlainObject(o.todos) ? (o.todos as Record<string, unknown>) : {};
+
+  const imagesRaw = Array.isArray(o.images) ? o.images : [];
+  const images = imagesRaw
+    .filter(isPlainObject)
+    .map((r) => {
+      const rec = r as Record<string, unknown>;
+      return {
+        originalIndex: typeof rec.originalIndex === "number" ? rec.originalIndex : -1,
+        keep: rec.keep === true,
+        alt: typeof rec.alt === "string" ? rec.alt : "",
+      };
+    })
+    .filter((r) => r.originalIndex >= 0);
+
+  return {
+    distribution: { confirm: confirm as string[], exclude: exclude as string[] },
+    scalars,
+    todos,
+    images,
+  };
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+/**
+ * Execute `FileOp` entries sequentially — order matters: per-file deletes run
+ * before any directory-scoped move, so the rename moves only the kept files.
+ * Missing-file errors on `delete-file` / `delete-dir` are swallowed (idempotent),
+ * but `rename-dir` errors propagate so the caller surfaces a real failure.
+ */
+async function runFileOps(ops: FileOp[]): Promise<void> {
+  for (const op of ops) {
+    if (op.kind === "delete-file") {
+      await unlink(op.absPath).catch((err) => {
+        if (err && (err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      });
+    } else if (op.kind === "delete-dir") {
+      await rm(op.absPath, { recursive: true, force: true });
+    } else if (op.kind === "rename-dir") {
+      // Rename is the failure-sensitive op; let errors bubble.
+      await rename(op.from, op.to);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Image index
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a basename → absolute-path map for the draft's `images:` array. The
+ * `/api/image/:filename` route looks up basenames here, so only files actually
+ * referenced by the draft can be served — `..` traversal is impossible because
+ * the lookup is keyed by basename, not path.
+ */
+function buildImageIndex(
+  draftPath: string,
+  raw: Record<string, unknown>
+): Record<string, DraftImage> {
+  const index: Record<string, DraftImage> = {};
+  const draftDir = path.dirname(draftPath);
+  const images = raw.images;
+  if (!Array.isArray(images)) return index;
+  for (const img of images) {
+    const local = (img as { local_path?: unknown })?.local_path;
+    if (typeof local !== "string") continue;
+    const absPath = path.resolve(draftDir, local);
+    if (!absPath.startsWith(draftDir + path.sep)) continue;
+    const basename = path.basename(absPath);
+    const ext = path.extname(absPath).toLowerCase();
+    const contentType =
+      ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+    index[basename] = { absPath, contentType };
+  }
+  return index;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,7 +316,29 @@ async function loadDraft(filePath: string): Promise<ParsedDraft> {
   const text = await readFile(filePath, "utf8");
   const raw = parseYaml(text) as Record<string, unknown>;
   const taxonKey = extractTaxonKey(raw);
-  return { raw, taxonKey };
+  const todos = extractTodoFieldNames(text);
+  return { raw, taxonKey, todos };
+}
+
+/**
+ * Scan the raw YAML text for commented-out keys flagged with `# TODO:`. The
+ * `yaml` parser drops comments, so we work from the on-disk text. Lines look
+ * like `# fieldName: <placeholder>  # TODO: …` — capture the field name to
+ * surface in the Fields review pane.
+ */
+function extractTodoFieldNames(text: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const re = /^#\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:.*#\s*TODO\b/;
+  for (const line of text.split("\n")) {
+    const m = re.exec(line);
+    if (!m) continue;
+    const name = m[1];
+    if (seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
 }
 
 /**

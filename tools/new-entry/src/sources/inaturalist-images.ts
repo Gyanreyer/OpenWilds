@@ -16,10 +16,13 @@
  *                                            (Flowering then Fruiting) so we
  *                                            return a quota mix of both
  *                                            life-stage shots.
- *     &per_page=200
+ *     &per_page=60
  *
  * Three-pass strategy: each pass fills its own quota slot, deduping against
- * earlier passes by observation id.
+ * earlier passes by observation id. Each accepted observation can contribute
+ * up to `MAX_PHOTOS_PER_OBSERVATION` photos — many iNat observations include
+ * a habit shot plus close-ups, so taking the first two is a cheap way to get
+ * whole-plant coverage alongside the detail-skewed top-voted shots.
  *   1. Flowering — annotated Phenology=Flowering. Detail shots of bloom.
  *   2. Fruiting — annotated Phenology=Fruiting. Detail shots of fruit/seed.
  *   3. Unfiltered — top-faved open-license obs of *any* phenology, excluding
@@ -39,6 +42,8 @@ import type { ImageLicense } from "../types.ts";
 
 const BASE = "https://api.inaturalist.org/v1";
 const OPEN_LICENSES = ["cc0", "cc-by", "cc-by-sa", "cc-by-nc", "cc-by-nc-sa"] as const;
+const PER_PAGE = 60;
+const MAX_PHOTOS_PER_OBSERVATION = 2;
 
 interface INatPhoto {
   id: number;
@@ -135,7 +140,7 @@ export async function fetchImageCandidates(
 ): Promise<ImageCandidatesResult> {
   const targetCount = quota.flowering + quota.fruiting + quota.unfiltered;
 
-  const baseQueryURL = new URL("/observations", BASE);
+  const baseQueryURL = new URL(`${BASE}/observations`);
   baseQueryURL.searchParams.set("taxon_id", taxonId.toString());
   baseQueryURL.searchParams.set("quality_grade", "research");
   // Filter to only observations with photos
@@ -144,8 +149,10 @@ export async function fetchImageCandidates(
   baseQueryURL.searchParams.set("photo_license", OPEN_LICENSES.join(","));
   baseQueryURL.searchParams.set("order_by", "votes");
   baseQueryURL.searchParams.set("order", "desc");
-  // Don't fetch more results than we could possibly use across all three passes
-  baseQueryURL.searchParams.set("per_page", targetCount.toString());
+  // Reach deeper than `targetCount` so passes can keep walking when early
+  // observations are skipped (license, dedup with earlier passes, photos
+  // already counted toward this obs's MAX_PHOTOS_PER_OBSERVATION cap).
+  baseQueryURL.searchParams.set("per_page", PER_PAGE.toString());
 
   const candidates: ImageCandidate[] = [];
   const seenObs = new Set<number>();
@@ -166,22 +173,21 @@ export async function fetchImageCandidates(
     );
     let added = 0;
     for (const obs of resp.results ?? []) {
-      if (added >= maxEntries) {
-        break;
-      }
-      if (candidates.length >= targetCount) {
-        break;
-      }
+      if (added >= maxEntries) break;
+      if (candidates.length >= targetCount) break;
       if (seenObs.has(obs.id)) {
         // Skip observations we've already included from an earlier pass.
         continue;
       }
-      const candidate = pickFromObservation(obs, phenology);
-      if (candidate) {
-        candidates.push(candidate);
-        seenObs.add(obs.id);
+      const fromObs = pickFromObservation(obs, phenology);
+      if (fromObs.length === 0) continue;
+      for (const c of fromObs) {
+        if (added >= maxEntries) break;
+        if (candidates.length >= targetCount) break;
+        candidates.push(c);
         added++;
       }
+      seenObs.add(obs.id);
     }
     return added;
   };
@@ -221,44 +227,50 @@ export async function fetchImageCandidates(
   return { candidates, floweringCount, fruitingCount, unfilteredCount };
 }
 
+/**
+ * Up to `MAX_PHOTOS_PER_OBSERVATION` valid candidates from one observation.
+ * Many iNat uploads include a habit shot plus close-ups in the same record;
+ * walking past the first photo (without going wild) tends to surface
+ * whole-plant views the votes-desc sort otherwise misses. Photos under an
+ * unrecognized or missing license are skipped, not counted toward the cap.
+ */
 function pickFromObservation(
   obs: INatObservation,
   phenology: Phenology
-): ImageCandidate | null {
-  for (const photo of obs.photos ?? []) {
-    const license = normalizeLicense(photo.license_code);
-    if (!license) {
-      // Only accept photos under an open license we recognize
-      continue;
-    }
-    if (!photo.url) {
-      // Obviously skip photos with no URL
-      continue;
-    }
-    // iNaturalist uses a convention where image file names are "<size>.<ext>"; by default,
-    // the API gives us the "square" size URL but we can just swap in "original" for "square" to get
-    // the original full-res version's URL.
-    const originalUrl = photo.url.replace(/\/square\.([a-zA-Z]+)/, "/original.$1");
+): ImageCandidate[] {
+  const out: ImageCandidate[] = [];
+  const user = obs.user;
+  const creatorName = user?.name?.trim() || user?.login || "Unknown";
+  const creatorUrl = user?.login
+    ? `https://www.inaturalist.org/people/${user.login}`
+    : null;
+  const observationUrl = `https://www.inaturalist.org/observations/${obs.id}`;
+  const observedOn = obs.observed_on || null;
+  const faves = obs.faves_count ?? obs.cached_votes_total ?? 0;
 
-    const user = obs.user;
-    const creatorName = user?.name?.trim() || user?.login || "Unknown";
-    const creatorUrl = user?.login
-      ? `https://www.inaturalist.org/people/${user.login}`
-      : null;
-    return {
+  for (const photo of obs.photos ?? []) {
+    if (out.length >= MAX_PHOTOS_PER_OBSERVATION) break;
+    const license = normalizeLicense(photo.license_code);
+    if (!license) continue;
+    if (!photo.url) continue;
+    // iNaturalist uses a convention where image file names are "<size>.<ext>";
+    // the API gives the "square" thumbnail URL by default — swap in "original"
+    // for the full-resolution version.
+    const originalUrl = photo.url.replace(/\/square\.([a-zA-Z]+)/, "/original.$1");
+    out.push({
       observationId: obs.id,
       photoId: photo.id,
       originalUrl,
       license,
       creatorName,
       creatorUrl,
-      observationUrl: `https://www.inaturalist.org/observations/${obs.id}`,
-      observedOn: obs.observed_on || null,
-      faves: obs.faves_count ?? obs.cached_votes_total ?? 0,
+      observationUrl,
+      observedOn,
+      faves,
       phenology,
-    };
+    });
   }
-  return null;
+  return out;
 }
 
 /**

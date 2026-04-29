@@ -15,12 +15,18 @@ export const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 export const PLANTAE_ROOT = path.join(REPO_ROOT, "data", "plantae");
 
 export interface EntryLocation {
-  /** Absolute path to the target `data.yml`. */
+  /** Absolute path to the curated `data.yml`. */
   absPath: string;
-  /** Repo-relative path, for logging. */
+  /** Repo-relative path to `data.yml`, for logging. */
   relPath: string;
-  /** True when `data.yml` already exists at this path. */
+  /** True when `data.yml` already exists. Used to route image fetches to `images.draft/`. */
   exists: boolean;
+  /** Absolute path to the sibling `data.draft.yml`. */
+  draftPath: string;
+  /** Repo-relative path to `data.draft.yml`, for logging. */
+  draftRelPath: string;
+  /** True when `data.draft.yml` already exists. */
+  draftExists: boolean;
 }
 
 export async function resolveEntryPath(
@@ -33,8 +39,19 @@ export async function resolveEntryPath(
     .concat("data.yml");
 
   const absPath = path.join(PLANTAE_ROOT, ...parts);
-  const relPath = path.relative(REPO_ROOT, absPath);
-  return { absPath, relPath, exists: await fileExists(absPath) };
+  const draftPath = absPath.replace(/data\.yml$/, "data.draft.yml");
+  const [exists, draftExists] = await Promise.all([
+    fileExists(absPath),
+    fileExists(draftPath),
+  ]);
+  return {
+    absPath,
+    relPath: path.relative(REPO_ROOT, absPath),
+    exists,
+    draftPath,
+    draftRelPath: path.relative(REPO_ROOT, draftPath),
+    draftExists,
+  };
 }
 
 async function fileExists(p: string): Promise<boolean> {

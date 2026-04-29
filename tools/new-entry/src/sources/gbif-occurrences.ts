@@ -131,7 +131,7 @@ export async function fetchOccurrences(
 }
 
 function buildUrl(taxonKey: number, offset: number): URL {
-  const url = new URL(`/occurrence/search`, BASE);
+  const url = new URL(`${BASE}/occurrence/search`);
   url.searchParams.set("taxonKey", String(taxonKey));
   url.searchParams.set("country", "US");
   url.searchParams.append("country", "CA");
